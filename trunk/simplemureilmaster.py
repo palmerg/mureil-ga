@@ -209,33 +209,35 @@ class SimpleMureilMaster:
         energy_res = float(conf['res']) / float(conf['water_factor'])
         energy_res_temp = energy_res
         energy_cap = float(conf['cap']) / float(conf['water_factor'])
+        gen = conf['gen']
+        pump_round_trip = conf['pump_round_trip']
+
+        elec_diffs = self.ts_demand - elec
 
         for i in range(len(elec)):
-            if self.ts_demand[i] > elec[i]:
-                elec_diff = self.ts_demand[i] - elec[i]
-                if elec_diff > conf['gen']:
-                    elec_diff = conf['gen']
-                energy = elec_diff
-                if energy > energy_res_temp:
-                    energy = energy_res_temp
+            elec_diff = elec_diffs[i]
+            if elec_diff > 0:
+                if elec_diff > gen:
+                    elec_diff = gen
+                if elec_diff > energy_res_temp:
+                    elec_diff = energy_res_temp
                     energy_res_temp = 0
                 else:
-                    energy_res_temp = energy_res_temp - energy
-                extra_power[i] = energy
-                elec[i] = elec[i] + extra_power[i]
+                    energy_res_temp -= elec_diff
+                extra_power[i] = elec_diff
+                elec[i] += elec_diff
             else:
-                if elec[i] > self.ts_demand[i]:
-                    elec_diff = elec[i] - self.ts_demand[i]
-                    if elec_diff > conf['gen']:
-                        elec_diff = conf['gen']
-                    energy = elec_diff * conf['pump_round_trip']
-                    if energy > energy_cap - energy_res_temp:
-                        energy = energy_cap - energy_res_temp
-                        energy_res_temp = energy_cap
-                    else:
-                        energy_res_temp += energy
-                    extra_power[i] = energy
-                    elec[i] = elec[i] - extra_power[i]
+                elec_diff = -elec_diff
+                if elec_diff > gen:
+                    elec_diff = gen
+                elec_diff *= pump_round_trip
+                if elec_diff > energy_cap - energy_res_temp:
+                    elec_diff = energy_cap - energy_res_temp
+                    energy_res_temp = energy_cap
+                else:
+                    energy_res_temp += elec_diff
+                extra_power[i] = elec_diff
+                elec[i] -= elec_diff
 
 
         #for i in range(len(elec)):
