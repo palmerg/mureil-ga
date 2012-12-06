@@ -1,8 +1,10 @@
 # Based on Robert's case1
 import pupynere as nc
 
-class Data:
-    def __init__(self, config):
+import mureilbase
+
+class Data(mureilbase.Mureilbase):
+    def set_config(self, config):
         dir = './'
         file = 'CoV_wind_station_output_prox_penalty.nc' #file with _II has smaller exclusion zone
         infile = dir + file
@@ -21,6 +23,11 @@ class Data:
         
         return None
 
+    def get_default_config(self):
+        config = {
+            'module' : 'rhuva_data1',
+            'class' : 'Data'
+        }
 
     def wind_data(self):
         return self.ts_wind

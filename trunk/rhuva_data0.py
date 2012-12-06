@@ -1,8 +1,10 @@
 # Based on Robert's case0
 import pupynere as nc
 
-class Data:
-    def __init__(self, config):
+import mureilbase
+
+class Data(mureilbase.Mureilbase):
+    def set_config(self, config):
         dir = './'
         file = 'CoV_output.nc'
         infile = dir + file
@@ -12,6 +14,12 @@ class Data:
         self.ts_demand = f.variables['ts_demand'][:]
         return None
 
+    def get_default_config(self):
+        config = {
+            'module' : 'rhuva_data0',
+            'class' : 'Data'
+        }
+        
     def wind_data(self):
         return self.ts_wind
 
