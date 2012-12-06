@@ -28,6 +28,8 @@ class Data(mureilbase.Mureilbase):
             'module' : 'rhuva_data1',
             'class' : 'Data'
         }
+        
+        return config
 
     def wind_data(self):
         return self.ts_wind

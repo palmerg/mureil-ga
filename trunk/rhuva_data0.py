@@ -20,6 +20,9 @@ class Data(mureilbase.Mureilbase):
             'class' : 'Data'
         }
         
+        return config
+
+        
     def wind_data(self):
         return self.ts_wind
 
