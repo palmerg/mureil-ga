@@ -4,14 +4,17 @@ import pickle
 import mureilbuilder
 
 class SimpleMureilMaster:
-    def __init__(self, full_config):
-        check_params = mureilbuilder.check_param_names(self.get_default_config(), full_config['Master'])
-        if not check_params:
-            print 'Parameter check failed for Master'
+    def __init__(self):
         self.config = self.get_default_config()
+        self.is_configured = False
+
+    def get_config(self):
+        return self.config
+
+    def set_config(self, full_config):
         self.config.update(full_config['Master'])
         self.full_config = full_config
-        
+
         # First, set up the data class and get the data
         data_config = full_config[self.config['data']]
         self.data_instance = mureilbuilder.create_instance(data_config)
@@ -24,18 +27,26 @@ class SimpleMureilMaster:
         self.nsolar_stats = self.ts_solar.shape[1]
         self.nsteps = self.ts_demand.shape[0]
 
-        # and initialise the other generators
-        self.hydro = full_config[self.config['hydro']]
-        self.gas = full_config[self.config['gas']]
-        self.solar = full_config[self.config['solar']]
-        self.wind = full_config[self.config['wind']]
-        
+        for gen_type in ['solar', 'wind', 'gas', 'hydro']:
+            setattr(self, gen_type, self.get_default_generator_config(gen_type))
+            x = getattr(self, gen_type)
+            if self.config[gen_type] in full_config:
+                mureilbuilder.check_param_names(x, full_config[self.config[gen_type]])
+                x.update(full_config[self.config[gen_type]])
+
         # and set up the algorithm
-        algorithm_config = full_config[self.config['algorithm']]
+        if self.config['algorithm'] not in full_config:
+            algorithm_config = {'module': 'geneticalgorithm', 'class' : 'Engine'}
+        else:
+            algorithm_config = full_config[self.config['algorithm']]
+        
         algorithm_config['min_len'] = self.nsolar_stats + self.nwind_stats
         algorithm_config['max_len'] = self.nsolar_stats + self.nwind_stats
         algorithm_config['gene_test_callback'] = self.gene_test
+        
         self.algorithm = mureilbuilder.create_instance(algorithm_config)
+
+        self.is_configured = True
 
         self.before(self.algorithm.get_population())
     
@@ -57,12 +68,55 @@ class SimpleMureilMaster:
         
         return config
     
+    def get_default_generator_config(self, gen_type):
+        if (gen_type == 'solar'):
+            config = {
+                'module': 'simplemureilmaster_solar',
+                'capex': 50,
+                'size': 50,
+                'install': 1000
+            }
+        elif (gen_type == 'wind'):
+            config = {
+                'module': 'simplemureilmaster_wind',
+                'capex': 3,
+                'wind_turbine': 2.5,
+                'install': 500
+            }
+        elif (gen_type == 'hydro'):
+            config = {
+                'module': 'simplemureilmaster_hydro',
+                'capex': 2.0,
+                'gen': 2000,
+                'cap': 10000,
+                'res': 5000,
+                'water_factor': 0.01,
+                'pump_round_trip': 0.8
+            }
+        elif (gen_type == 'gas'):
+            config = {
+                'module': 'simplemureilmaster_gas',
+                'capex': 1.0,
+                'price': 60,
+                'carbon_tax': 20
+            }
+        
+        return config
+
+    
     def run(self):
+        if (not self.is_configured):
+            print 'simplemureilmaster is not configured'
+            return None
+    
         for i in range(self.config['iterations']):
             self.algorithm.do_iteration()
             
         self.after(self.algorithm.get_final())
         self.algorithm.tidy_up()
+    
+        return None
+    
     
     def before(self, population):
         """input: None
@@ -180,9 +234,7 @@ class SimpleMureilMaster:
                     turb_count+=1
                 cost_wind=cost_temp.sum()
 
-            hydro = self.hydro_elec(elec)
-            hydro_cost=hydro[0]
-            elec = hydro[1]
+            hydro_cost, elec = self.hydro_elec(elec)
 
             gas = self.gas_elec(elec)
             gas_cost = gas[0]
@@ -206,38 +258,41 @@ class SimpleMureilMaster:
         hydro_res_temp = conf['res']
         extra_power = np.zeros(len(elec))
 
-        energy_res = float(conf['res']) / float(conf['water_factor'])
-        energy_res_temp = energy_res
-        energy_cap = float(conf['cap']) / float(conf['water_factor'])
+        elec_res = float(conf['res']) / float(conf['water_factor'])
+        elec_res_temp = elec_res
+        elec_cap = float(conf['cap']) / float(conf['water_factor'])
         gen = conf['gen']
         pump_round_trip = conf['pump_round_trip']
+        pump_round_trip_recip = 1 / pump_round_trip
 
         elec_diffs = self.ts_demand - elec
 
         for i in range(len(elec)):
             elec_diff = elec_diffs[i]
             if elec_diff > 0:
-                if elec_diff > gen:
-                    elec_diff = gen
-                if elec_diff > energy_res_temp:
-                    elec_diff = energy_res_temp
-                    energy_res_temp = 0
+                elec_to_release = elec_diff
+                if elec_to_release > gen:
+                    elec_to_release = gen
+                if elec_to_release > elec_res_temp:
+                    elec_to_release = elec_res_temp
+                    elec_res_temp = 0
                 else:
-                    energy_res_temp -= elec_diff
-                extra_power[i] = elec_diff
-                elec[i] += elec_diff
+                    elec_res_temp -= elec_to_release
+                extra_power[i] = elec_to_release
+                elec[i] += elec_to_release
             else:
-                elec_diff = -elec_diff
-                if elec_diff > gen:
-                    elec_diff = gen
-                elec_diff *= pump_round_trip
-                if elec_diff > energy_cap - energy_res_temp:
-                    elec_diff = energy_cap - energy_res_temp
-                    energy_res_temp = energy_cap
+                elec_to_store = -elec_diff
+                if elec_to_store > gen:
+                    elec_to_store = gen
+                elec_to_store *= pump_round_trip
+                if elec_to_store > elec_cap - elec_res_temp:
+                    elec_to_store = elec_cap - elec_res_temp
+                    elec_res_temp = elec_cap
                 else:
-                    energy_res_temp += elec_diff
-                extra_power[i] = elec_diff
-                elec[i] -= elec_diff
+                    elec_res_temp += elec_to_store
+                elec_used = elec_to_store * pump_round_trip_recip
+                extra_power[i] = elec_used
+                elec[i] -= elec_used
 
 
         #for i in range(len(elec)):
