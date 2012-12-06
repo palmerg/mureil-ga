@@ -14,7 +14,7 @@ class Data(mureilbase.Mureilbase):
     def set_config(self, config):
         """Set the config, and read the files into memory.
         """
-        self.config.update(config)
+        mureilbase.Mureilbase.set_config(self, config)
         infile = self.config['dir'] + self.config['file']
         f = nc.NetCDFFile(infile)
         self.ts_wind = f.variables['ts_wind'][:,:]

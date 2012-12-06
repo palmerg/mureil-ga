@@ -138,13 +138,11 @@ def create_instance(config):
     if not issubclass(class_instance.__class__, mureilbase.MureilbaseInterface):
         print class_name + ' does not implement mureilbase.MureilbaseInterface'
     
-    temp_config = class_instance.get_config()
-    temp_config.update(config)
     check_params = check_param_names(class_instance.get_default_config(), config, class_name + ' in ' + module_name)
     if not check_params:
         print 'Parameter check failed for ' + class_name
         
-    class_instance.set_config(temp_config)
+    class_instance.set_config(config)
     return class_instance
     
     
@@ -153,7 +151,8 @@ def create_master_instance(full_config, flags):
     class_name = full_config['Master']['class']
     module = importlib.import_module(module_name)
     class_instance = getattr(module, class_name)()
-    # Get the default master config in case the config files don't list all the Master members
+    # Get the default master config in case the config files don't list all the Master members, so that the
+    # 'apply_flags' can work
     temp_config = class_instance.get_config()
     temp_config.update(full_config['Master'])
     full_config['Master'] = temp_config

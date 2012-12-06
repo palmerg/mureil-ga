@@ -232,7 +232,8 @@ class SimpleMureilMaster:
                     turb_count+=1
                 cost_wind=cost_temp.sum()
 
-            (hydro_cost, hydro_ts, elec) = self.hydro.calculate_operation(self.ts_demand, elec)
+            (hydro_cost, hydro_ts) = self.hydro.calculate_operation(self.ts_demand - elec)
+            elec += hydro_ts
 
             gas = self.gas_elec(elec)
             gas_cost = gas[0]
