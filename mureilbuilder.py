@@ -117,12 +117,13 @@ def apply_flags(full_config, flags):
     return full_config
     
 
-def check_param_names(default_config, new_config):
+def check_param_names(default_config, new_config, identifier):
     result = True
     for param in new_config:
         if param not in default_config:
-            result = False
-            print 'Parameter ' + param + ' not expected by ' + default_config['module']
+            if param not in ['class', 'module']:
+                result = False
+                print 'Parameter ' + param + ' not expected by ' + identifier
     
     return result
 
@@ -138,7 +139,7 @@ def create_instance(config):
     
     temp_config = class_instance.get_config()
     temp_config.update(config)
-    check_params = check_param_names(class_instance.get_default_config(), config)
+    check_params = check_param_names(class_instance.get_default_config(), config, class_name + ' in ' + module_path)
     if not check_params:
         print 'Parameter check failed for ' + class_name
         
@@ -155,7 +156,7 @@ def create_master_instance(full_config, flags):
     temp_config = class_instance.get_config()
     temp_config.update(full_config['Master'])
     full_config['Master'] = temp_config
-    check_params = check_param_names(class_instance.get_default_config(), full_config['Master'])
+    check_params = check_param_names(class_instance.get_default_config(), full_config['Master'], class_name + ' in ' + module_path)
     if not check_params:
         print 'Parameter check failed for Master'
     

@@ -9,8 +9,6 @@ class Data(mureilbase.Mureilbase):
 
     def get_default_config(self):
         config = {
-            'module' : 'mg_sample_data',
-            'class' : 'Data'
         }
         
         return config
