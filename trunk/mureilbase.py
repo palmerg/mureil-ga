@@ -25,7 +25,7 @@ class Mureilbase(MureilbaseInterface):
         self.config = self.get_default_config()
         self.is_configured = False
 
-    def set_config(self):
+    def set_config(self, config):
         self.config.update(config)
         return
 

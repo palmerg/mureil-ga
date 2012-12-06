@@ -27,11 +27,19 @@ class SimpleMureilMaster:
         self.nsolar_stats = self.ts_solar.shape[1]
         self.nsteps = self.ts_demand.shape[0]
 
-        for gen_type in ['solar', 'wind', 'gas', 'hydro']:
+        # Instantiate hydro object
+        if self.config['hydro'] not in full_config:
+            hydro_config = {'module': 'basicpumpedhydro', 'class': 'BasicPumpedHydro'}
+        else:
+            hydro_config = full_config[self.config['hydro']]
+            
+        self.hydro = mureilbuilder.create_instance(hydro_config)
+
+        for gen_type in ['solar', 'wind', 'gas']:
             setattr(self, gen_type, self.get_default_generator_config(gen_type))
             x = getattr(self, gen_type)
             if self.config[gen_type] in full_config:
-                mureilbuilder.check_param_names(x, full_config[self.config[gen_type]])
+                mureilbuilder.check_param_names(x, full_config[self.config[gen_type]], 'simplemureilmaster_' + gen_type)
                 x.update(full_config[self.config[gen_type]])
 
         # and set up the algorithm
@@ -82,16 +90,6 @@ class SimpleMureilMaster:
                 'capex': 3,
                 'wind_turbine': 2.5,
                 'install': 500
-            }
-        elif (gen_type == 'hydro'):
-            config = {
-                'module': 'simplemureilmaster_hydro',
-                'capex': 2.0,
-                'gen': 2000,
-                'cap': 10000,
-                'res': 5000,
-                'water_factor': 0.01,
-                'pump_round_trip': 0.8
             }
         elif (gen_type == 'gas'):
             config = {
@@ -234,7 +232,7 @@ class SimpleMureilMaster:
                     turb_count+=1
                 cost_wind=cost_temp.sum()
 
-            hydro_cost, elec = self.hydro_elec(elec)
+            (hydro_cost, hydro_ts, elec) = self.hydro.calculate_operation(self.ts_demand, elec)
 
             gas = self.gas_elec(elec)
             gas_cost = gas[0]
@@ -250,78 +248,6 @@ class SimpleMureilMaster:
         #pdb.set_trace()
         return cost
 
-
-    def hydro_elec(self, elec):
-
-        conf = self.hydro
-
-        hydro_res_temp = conf['res']
-        extra_power = np.zeros(len(elec))
-
-        elec_res = float(conf['res']) / float(conf['water_factor'])
-        elec_res_temp = elec_res
-        elec_cap = float(conf['cap']) / float(conf['water_factor'])
-        gen = conf['gen']
-        pump_round_trip = conf['pump_round_trip']
-        pump_round_trip_recip = 1 / pump_round_trip
-
-        elec_diffs = self.ts_demand - elec
-
-        for i in range(len(elec)):
-            elec_diff = elec_diffs[i]
-            if elec_diff > 0:
-                elec_to_release = elec_diff
-                if elec_to_release > gen:
-                    elec_to_release = gen
-                if elec_to_release > elec_res_temp:
-                    elec_to_release = elec_res_temp
-                    elec_res_temp = 0
-                else:
-                    elec_res_temp -= elec_to_release
-                extra_power[i] = elec_to_release
-                elec[i] += elec_to_release
-            else:
-                elec_to_store = -elec_diff
-                if elec_to_store > gen:
-                    elec_to_store = gen
-                elec_to_store *= pump_round_trip
-                if elec_to_store > elec_cap - elec_res_temp:
-                    elec_to_store = elec_cap - elec_res_temp
-                    elec_res_temp = elec_cap
-                else:
-                    elec_res_temp += elec_to_store
-                elec_used = elec_to_store * pump_round_trip_recip
-                extra_power[i] = elec_used
-                elec[i] -= elec_used
-
-
-        #for i in range(len(elec)):
-        #    if self.ts_demand[i] > elec[i]:
-        #        elec_diff = self.ts_demand[i] - elec[i]
-        #        if elec_diff > conf['gen']:
-        #            elec_diff = conf['gen']
-        #        water = elec_diff * conf['water_factor']
-        #        if water > hydro_res_temp:
-        #            water = hydro_res_temp
-        #        hydro_res_temp = hydro_res_temp - water
-        #        extra_power[i] = water / conf['water_factor']
-        #        elec[i] = elec[i] + extra_power[i]
-        #
-        #    if elec[i] > self.ts_demand[i]:
-        #        elec_diff = elec[i] - self.ts_demand[i]
-        #        if elec_diff > conf['gen']:
-        #            elec_diff = conf['gen']
-        #        water = elec_diff * conf['water_factor'] * 0.8
-        #        if water > conf['cap'] - hydro_res_temp:
-        #            water = conf['cap'] - hydro_res_temp
-        #        hydro_res_temp = hydro_res_temp + water
-        #        extra_power[i] = water / conf['water_factor']
-        #        elec[i] = elec[i] - extra_power[i]
-
-        hydro_max = extra_power.max()
-        hydro_cost = hydro_max * conf['capex']
-
-        return hydro_cost, elec
 
     def gas_elec(self, elec):
 

@@ -16,8 +16,6 @@ class Data(mureilbase.Mureilbase):
 
     def get_default_config(self):
         config = {
-            'module' : 'rhuva_data0',
-            'class' : 'Data'
         }
         
         return config
