@@ -5,7 +5,7 @@ import mureilbase
 
 class Data(mureilbase.Mureilbase):
     def set_config(self, config):
-        dir = './'
+        dir = '../access_2month_optim/'
         file = 'CoV_wind_station_output_prox_penalty.nc' #file with _II has smaller exclusion zone
         infile = dir + file
         f = nc.NetCDFFile(infile)
