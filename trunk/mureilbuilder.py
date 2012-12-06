@@ -10,6 +10,7 @@ import ConfigParser
 import json
 import argparse
 import mureilbase
+import importlib
 
 def read_config_file(filename):
     """Take in a filename and parse the file sections to a nested dict object.
@@ -129,9 +130,9 @@ def check_param_names(default_config, new_config, identifier):
 
 
 def create_instance(config):
-    module_path = config['module']
+    module_name = config['module']
     class_name = config['class']
-    module = __import__(module_path)
+    module = importlib.import_module(module_name)
     class_instance = getattr(module, class_name)()
 
     if not issubclass(class_instance.__class__, mureilbase.MureilbaseInterface):
@@ -139,7 +140,7 @@ def create_instance(config):
     
     temp_config = class_instance.get_config()
     temp_config.update(config)
-    check_params = check_param_names(class_instance.get_default_config(), config, class_name + ' in ' + module_path)
+    check_params = check_param_names(class_instance.get_default_config(), config, class_name + ' in ' + module_name)
     if not check_params:
         print 'Parameter check failed for ' + class_name
         
@@ -148,15 +149,15 @@ def create_instance(config):
     
     
 def create_master_instance(full_config, flags):
-    module_path = full_config['Master']['module']
+    module_name = full_config['Master']['module']
     class_name = full_config['Master']['class']
-    module = __import__(module_path)
+    module = importlib.import_module(module_name)
     class_instance = getattr(module, class_name)()
     # Get the default master config in case the config files don't list all the Master members
     temp_config = class_instance.get_config()
     temp_config.update(full_config['Master'])
     full_config['Master'] = temp_config
-    check_params = check_param_names(class_instance.get_default_config(), full_config['Master'], class_name + ' in ' + module_path)
+    check_params = check_param_names(class_instance.get_default_config(), full_config['Master'], class_name + ' in ' + module_name)
     if not check_params:
         print 'Parameter check failed for Master'
     
