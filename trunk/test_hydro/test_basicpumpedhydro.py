@@ -42,27 +42,22 @@ class TestBasicPumpedHydro(unittest.TestCase):
         }
         self.hydro.set_config(config)
         
-        demand = np.array([100, 200, 300])
-        supply = np.array([50, 100, 200])
+        supply_need = np.array([50, 100, 100])
         
-        #exp_ts = demand - supply
-        #exp_supply = demand
+        #exp_ts = supply_need
         #exp_cost = max(exp_ts) * config['capex']
         
         # Same as above, but explicitly calculated by hand
         # Try setting 'gen' to 20 above instead of 2000 to see
         # how the errors appear
         exp_ts = np.array([50, 100, 100])
-        exp_supply = np.array([100, 200, 300])
         exp_cost = 200
         
-        (out_cost, out_ts, out_supply) = self.hydro.calculate_operation(
-            demand, supply)    
+        (out_cost, out_ts) = self.hydro.calculate_operation(supply_need)
         
         # The tolist thing is so that the numpy array (which basicpumpedhydro
         # expects) gets turned into a list, which is what unittest expects.
         self.assertListEqual(out_ts.tolist(), exp_ts.tolist())
-        self.assertListEqual(out_supply.tolist(), exp_supply.tolist())
         self.assertEqual(out_cost, exp_cost)
       
       
