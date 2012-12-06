@@ -1,11 +1,21 @@
 # Sample data source file, for Marcelle to play with
 
 import numpy
+import mureilbase
 
-class Data:
-    def __init__(self, config):
+class Data(mureilbase.Mureilbase):
+    def set_config(self, config):
         return None
 
+    def get_default_config(self):
+        config = {
+            'module' : 'mg_sample_data',
+            'class' : 'Data'
+        }
+        
+        return config
+        
+    
     def wind_data(self):
         data = numpy.array([
             [0.14, 0.62, 0.80, 0.33],

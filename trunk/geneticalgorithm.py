@@ -7,9 +7,10 @@ Based on GA.py by steven, Jan 7, 2011
 '''
 
 import random, pickle
+import mureilbase
 
-class Engine:
-    def __init__(self, config):
+class Engine(mureilbase.Mureilbase):
+    def set_config(self, config):
         """input: config, dict containing:
         processes: number of processes to spawn, if 0, no multiprocessing
         seed: integer to seed randomiser
@@ -25,7 +26,7 @@ class Engine:
         output: None
         Sets up engine to run genetic algorithm
         """
-        self.config = config
+        self.config.update(config)
         self.gene_test = config['gene_test_callback']
         random.seed(config['seed'])
         self.population = Pop(self.config)
@@ -41,7 +42,30 @@ class Engine:
         self.clones_data = []
         self.best_gene_data = []
         self.iteration_count = -1
+        self.is_configured = True
         return None
+
+
+    def get_default_config(self):
+        config = {
+            'module': 'geneticalgorithm',
+            'class': 'Engine',
+            'min_size': 0,
+            'max_size': 10000,
+            'base_mute': 0.01,
+            'gene_mute': 0.1,
+            'pop_size': 50,
+            'mort': 0.5,
+            'nuke_power': 20,
+            'processes': 0,
+            'seed': 12345,
+            'min_len': 10,
+            'max_len': 10,
+            'gene_test_callback': None
+        }
+        
+        return config
+    
 
     def tidy_up(self):
         if (self.config['processes'] > 0):
