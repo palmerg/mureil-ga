@@ -187,25 +187,25 @@ class SimpleMureilMaster:
             switch_variable = self.config['cost_calc']
 
             if (switch_variable == 'basic'):
-                cost_solar = params[0:self.nsolar_stats].sum()*self.solar['capex']
-                cost_wind = params[self.nsolar_stats:self.nsolar_stats + self.nwind_stats].sum()*self.wind['capex']
+                cost_solar = params[0:self.nsolar_stats].sum() * self.solar['capex']
+                cost_wind = params[self.nsolar_stats:self.nsolar_stats + self.nwind_stats].sum() * self.wind['capex']
 
             elif (switch_variable == 'linear_install'):
                 cost_temp=np.zeros(self.nsolar_stats)
                 for i in range(self.nsolar_stats):
                     if params[i] < 1:
-                        cost_temp[i]=0
+                        cost_temp[i] = 0
                     else:
-                        cost_temp[i]=self.solar['install']+(params[i]*self.solar['capex'])
-                cost_solar=cost_temp.sum()
+                        cost_temp[i] = self.solar['install'] + (params[i] * self.solar['capex'])
+                cost_solar = cost_temp.sum()
 
                 turb_count=self.nsolar_stats
                 cost_temp=np.zeros(self.nwind_stats)
                 for i in range(self.nwind_stats):
                     if params[turb_count] < 1:
-                        cost_temp[i]=0
+                        cost_temp[i] = 0
                     else:
-                        cost_temp[i]=self.wind['install']+(params[turb_count]*self.wind['capex'])
+                        cost_temp[i]=self.wind['install'] + (params[turb_count] * self.wind['capex'])
                     turb_count+=1
                 cost_wind=cost_temp.sum()
 
@@ -213,22 +213,45 @@ class SimpleMureilMaster:
                 cost_temp=np.zeros(self.nsolar_stats)
                 for i in range(self.nsolar_stats):
                     if params[i] < 1:
-                        cost_temp[i]=0
+                        cost_temp[i] = 0
                     else:
                         cpt = ((self.solar['install'] - self.solar['capex']) *
                                np.exp(-0.1 * (params[i] - 1))) + self.solar['capex']
                         cost_temp[i] = params[i] * cpt
-                cost_solar=cost_temp.sum()
+                cost_solar = cost_temp.sum()
 
                 turb_count = self.nsolar_stats
                 cost_temp=np.zeros(self.nwind_stats)
                 for i in range(self.nwind_stats):
                     if params[turb_count] < 1:
-                        cost_temp[i]=0
+                        cost_temp[i] = 0
                     else:
                         cpt = ((self.wind['install'] - self.wind['capex']) *
                                np.exp(-0.1 * (params[turb_count] - 1))) + self.wind['capex']
                         cost_temp[i] = params[turb_count] * cpt
+                    turb_count+=1
+                cost_wind=cost_temp.sum()
+
+            elif (switch_variable == 'sqrt_install'):
+                cost_temp=np.zeros(self.nsolar_stats)
+                m_solar = (self.solar['capex'] * self.solar['max_cst']) / np.sqrt(self.solar['max_cst'])
+                solar_add = self.solar['install'] + self.solar['capex'] - m_solar
+                for i in range(self.nsolar_stats):
+                    if params[i] < 1:
+                        cost_temp[i] = 0
+                    else:
+                        cost_temp[i] = m_solar * np.sqrt(params[i]) + solar_add
+                cost_solar=cost_temp.sum()
+                
+                turb_count = self.nsolar_stats
+                cost_temp=np.zeros(self.nwind_stats)
+                m_wind = (self.wind['capex'] * self.wind['max_turb']) / np.sqrt(self.wind['max_turb'])
+                wind_add = self.wind['install'] + self.wind['capex'] - m_wind
+                for i in range(self.nwind_stats):
+                    if params[turb_count] < 1:
+                        cost_temp[i]= 0
+                    else:
+                        cost_temp[i] = m_wind * np.sqrt(params[turb_count]) + wind_add
                     turb_count+=1
                 cost_wind=cost_temp.sum()
 
