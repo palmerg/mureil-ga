@@ -1,9 +1,9 @@
 # Based on Robert's case1
 import pupynere as nc
 
-import mureilbase
+import tools.mureilbase as mureilbase
 
-class Data(mureilbase.Mureilbase):
+class Data(mureilbase.DataSinglePassBase):
     def set_config(self, config):
         dir = '../access_2month_optim/'
         file = 'CoV_wind_station_output_prox_penalty.nc' #file with _II has smaller exclusion zone

@@ -7,9 +7,19 @@ Based on GA.py by steven, Jan 7, 2011
 '''
 
 import random, pickle
-import mureilbase
+import tools.mureilbase as mureilbase
+import tools.mureilexception as mureilexception
 
-class Engine(mureilbase.Mureilbase):
+import logging
+
+logger = logging.getLogger(__name__)
+
+class Engine(mureilbase.ConfigurableBase):
+    def __init__(self):
+        mureilbase.ConfigurableBase.__init__(self)
+        self.mp_active = False
+    
+
     def set_config(self, config):
         """input: config, dict containing:
         processes: number of processes to spawn, if 0, no multiprocessing
@@ -28,8 +38,10 @@ class Engine(mureilbase.Mureilbase):
         """
         self.config.update(config)
         self.gene_test = config['gene_test_callback']
+        
         random.seed(config['seed'])
         self.population = Pop(self.config)
+
         if (self.config['processes'] > 0):
             # Set up the multiprocessing
             from multiprocessing import Process, Queue
@@ -38,6 +50,8 @@ class Engine(mureilbase.Mureilbase):
             for n in range(self.config['processes']):
                 p = Process(target=self.multiprocess, args=())
                 p.start()
+            self.mp_active = True
+            
         self.pop_score()
         self.clones_data = []
         self.best_gene_data = []
@@ -67,11 +81,17 @@ class Engine(mureilbase.Mureilbase):
         return config
     
 
-    def tidy_up(self):
-        if (self.config['processes'] > 0):
+    def finalise(self):
+        self.end_multiprocessing()
+        logger.debug('Finalising geneticalgorithm')
+        return None
+
+
+    def end_multiprocessing(self):
+        if self.mp_active:
             for n in range(self.config['processes']):
                 self.poolin.put('die')
-        return None
+
 
     def multiprocess(self):
         """input: None
@@ -88,30 +108,40 @@ class Engine(mureilbase.Mureilbase):
             self.poolout.put((pos, score))
         return None
 
+
     def get_population(self):
         return self.population
+
         
     def get_final(self):
         self.pop_score()
         return self.population, self.clones_data, self.best_gene_data
+
         
     def do_iteration(self):
+        if (not self.is_configured):
+            msg = 'do_iteration requested, but geneticalgorithm is not configured'
+            logger.critical(msg)
+            raise mureilexception.ConfigException(msg, 'geneticalgorithm.do_iteration', {})
+
         self.iteration_count += 1
         self.population.mutate()
         self.pop_score()
         if self.iteration_count % 1 == 0:
-            b_score = -1.e10
+            ## TODO - b_score should not have a lower limit. Fix this code.
+            b_score = -1.e15
             for gene in self.population.genes:
                 if gene.score > b_score:
                     bestgene = gene 
                     b_score = gene.score
-            print b_score
+            logger.debug('b_score = %f', b_score)
         self.best_gene_data.append([bestgene.values[:], bestgene.score, self.iteration_count])
         self.population.lemming()
         self.population.breed()
         self.decloner()
-        print self.iteration_count
+        logger.debug('iteration: %d', self.iteration_count)
         return None
+
 
     def pop_score(self):
         """input: pop class
@@ -131,6 +161,7 @@ class Engine(mureilbase.Mureilbase):
                 self.population.genes[s[0]].score = s[1]
 
         return None
+
 
     def clone_test(self):
         field = []
@@ -162,6 +193,7 @@ class Engine(mureilbase.Mureilbase):
             return True, [final, score]
         else:
             return False, [[],0]
+
 
     def decloner(self):
         c_bool, clone_stats = self.clone_test()
@@ -231,8 +263,11 @@ class Pop(list):
         culls some genes from pop based on mortality rate and genes score
         """
         if len(self.genes) == 0:
-            print 'score one for the Grim Reaper'
-            sys.exit()
+            logger.critical('geneticalgorithm - score one for the Grim Reaper, in lemming')
+            msg = 'geneticalgorithm found len(genes) == 0 in lemming'
+            data = {}
+            raise(mureilexception.AlgorithmException(msg, data))
+            
         pop1 = self.genes
         pop2 = []
         pop3 = []
@@ -263,8 +298,11 @@ class Pop(list):
         surviving genes and recombining them
         """
         if len(self.genes) == 0:
-            print 'score one for the Grim Reaper'
-            sys.exit()
+            logger.critical('geneticalgorithm - score one for the Grim Reaper, in breed')
+            msg = 'geneticalgorithm found len(genes) == 0 in breed'
+            data = {}
+            raise(mureilexception.AlgorithmException(msg, data))
+
         while len(self.genes) < self.config['pop_size']:
             mum = random.choice(self.genes)
             dad = random.choice(self.genes)

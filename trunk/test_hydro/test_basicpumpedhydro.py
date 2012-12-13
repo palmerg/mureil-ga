@@ -53,7 +53,7 @@ class TestBasicPumpedHydro(unittest.TestCase):
         exp_ts = np.array([50, 100, 100])
         exp_cost = 200
         
-        (out_cost, out_ts) = self.hydro.calculate_operation(supply_need)
+        (out_cost, out_ts) = self.hydro.calculate_cost_and_output([], supply_need)
         
         # The tolist thing is so that the numpy array (which basicpumpedhydro
         # expects) gets turned into a list, which is what unittest expects.

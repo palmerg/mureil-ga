@@ -1,16 +1,15 @@
 # Sample MUREIL configuration
 
 [Master]
-module: simplemureilmaster
+module: master.simplemureilmaster
 class: SimpleMureilMaster
 optim_type: missed_supply
-iterations: 10000
-output_file: linear_install.pkl
-cost_calc: linear_install
+iterations: 25
+output_file: mureil_sample.pkl
 algorithm: Algorithm
 
 [Algorithm]
-module: geneticalgorithm
+module: algorithm.geneticalgorithm
 class: Engine
 min_size: 0
 max_size: 10000
@@ -19,18 +18,26 @@ gene_mute: 0.1
 pop_size: 50
 mort: 0.5
 nuke_power: 20
-processes: 2
+processes: 0
 seed: 12345
 
 [Solar]
+module: generator.singlepassvariablegenerator
+class: VariableGeneratorLinearInstall
 capex: 50.0
 size: 50
 install: 1000
+type: Solar_Thermal
+data_type: ts_solar
 
 [Wind]
+module: generator.singlepassvariablegenerator
+class: VariableGeneratorLinearInstall
 capex: 3.0
-wind_turbine: 2.5
+size: 2.5
 install: 500
+type: Wind
+data_type: ts_wind
 
 [Hydro]
 module: hydro.basicpumpedhydro
@@ -42,11 +49,22 @@ res: 5000
 water_factor: 0.01
 pump_round_trip: 0.8
 
-[Gas]
+[Fossil]
+module: thermal.instantthermal
+class: InstantMaxThermal
+#class: InstantOptimisableThermal
 capex: 1.0
 price: 60
 carbon_tax: 20
 
+[MissedSupply]
+module: missed_supply.missedsupply
+#class: LinearMissedSupply
+class: CappedMissedSupply
+cost_per_mw: 12500e-6
+reliability_reqt: 0.002
+penalty: 1000
+
 [Data]
-module: rhuva_data1
+module: data.mg_sample_data
 class: Data

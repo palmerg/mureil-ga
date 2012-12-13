@@ -9,8 +9,12 @@ import sys
 import ConfigParser
 import json
 import argparse
-import mureilbase
+import tools.mureilbase as mureilbase
 import importlib
+import logging
+import tools.mureilexception as mureilexception
+
+logger = logging.getLogger(__name__)
 
 def read_config_file(filename):
     """Take in a filename and parse the file sections to a nested dict object.
@@ -60,12 +64,37 @@ def read_flags(flags):
   
     parser.add_argument('-f', '--file', action='append')
   
+    parser.add_argument('-l', '--logfile')
+    parser.add_argument('-d', '--debuglevel')
+    parser.add_argument('--logmodulenames', action='store_true', default=False)
+  
     args = parser.parse_args(flags)
 
     dict_args = vars(args)
     
     extra_config = {}
 
+    if dict_args['debuglevel'] is None:
+        debuglevel = 'WARNING'
+    else:
+        debuglevel = dict_args['debuglevel']
+
+    numeric_level = getattr(logging, debuglevel.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError('Invalid debug level: %s' % debuglevel)
+
+    if dict_args['logmodulenames']:
+        format_string = '%(levelname)-8s : %(name)s : %(message)s'
+    else:
+        format_string = '%(levelname)-8s : %(message)s'
+ 
+    logging.basicConfig(filename=dict_args['logfile'], level=numeric_level,
+        format=format_string)
+
+    dict_args.pop('logfile')
+    dict_args.pop('debuglevel')
+    dict_args.pop('logmodulenames')
+    
     files = dict_args.pop('file')
     
     conf_list = []
@@ -106,14 +135,14 @@ def apply_flags(full_config, flags):
             if param in full_config['Master']:
                 full_config['Master'][param] = value
             else:
-                print 'Parameter ' + param + ' not found'
+                logging.error('Parameter ' + param + ' not found')
         else:
             if section in full_config['Master']:
                 sect_name = full_config['Master'][section]
                 if param in full_config[sect_name]:
                     full_config[sect_name][param] = value
                 else:
-                    print 'Parameter ' + param + ' not found'
+                    logging.error('Parameter ' + param + ' not found')
     
     return full_config
     
@@ -124,23 +153,40 @@ def check_param_names(default_config, new_config, identifier):
         if param not in default_config:
             if param not in ['class', 'module']:
                 result = False
-                print 'Parameter ' + param + ' not expected by ' + identifier
+                logging.warning('Parameter ' + param + ' not expected by ' + identifier)
     
     return result
 
 
-def create_instance(config):
+def check_subclass(class_instance, subclass, caller):
+    if not issubclass(class_instance.__class__, subclass):
+        msg = 'in ' + caller + ' ' + class_instance.__class__.__name__ + ' does not implement ' + subclass.__name__
+        logging.critical(msg)
+        raise(mureilexception.ClassTypeException(msg, caller, 
+            class_instance.__class__.__name__, subclass.__name__, {}))
+
+
+def create_instance(config, section_name, subclass):
     module_name = config['module']
     class_name = config['class']
-    module = importlib.import_module(module_name)
-    class_instance = getattr(module, class_name)()
 
-    if not issubclass(class_instance.__class__, mureilbase.MureilbaseInterface):
-        print class_name + ' does not implement mureilbase.MureilbaseInterface'
-    
+    try:
+        module = importlib.import_module(module_name)
+        class_instance = getattr(module, class_name)()
+    except TypeError:
+        msg = 'Object (' + module_name + ', ' + class_name + '), requested in section ' + section_name + ' does not fully implement its subclasses'
+        logger.critical(msg)
+        raise mureilexception.ConfigException(msg, __name__, {})
+    except (ImportError, AttributeError):
+        msg = 'Object (' + module_name + ', ' + class_name + '), requested in section ' + section_name + ' could not be found.'
+        logger.critical(msg)
+        raise mureilexception.ConfigException(msg, __name__, {})
+
+    check_subclass(class_instance, subclass, __name__ + '.create_instance')
+
     check_params = check_param_names(class_instance.get_default_config(), config, class_name + ' in ' + module_name)
     if not check_params:
-        print 'Parameter check failed for ' + class_name
+        logging.warning('Parameter check failed for ' + class_name)
         
     class_instance.set_config(config)
     return class_instance
@@ -149,16 +195,30 @@ def create_instance(config):
 def create_master_instance(full_config, flags):
     module_name = full_config['Master']['module']
     class_name = full_config['Master']['class']
-    module = importlib.import_module(module_name)
-    class_instance = getattr(module, class_name)()
+    
+    try:
+        module = importlib.import_module(module_name)
+        class_instance = getattr(module, class_name)()
+    except TypeError:
+        msg = 'Requested Master of module: ' + module_name + ', class: ' + class_name + ' does not fully implement its subclasses'
+        logger.critical(msg)
+        raise mureilexception.ConfigException(msg, __name__, {})
+    except (ImportError, AttributeError):
+        msg = 'Requested Master of module: ' + module_name + ', class: ' + class_name + ' could not be loaded.'
+        logger.critical(msg)
+        raise mureilexception.ConfigException(msg, __name__, {})
+        
+    check_subclass(class_instance, mureilbase.MasterInterface, __name__ + '.create_master_instance')
+
     # Get the default master config in case the config files don't list all the Master members, so that the
     # 'apply_flags' can work
     temp_config = class_instance.get_config()
     temp_config.update(full_config['Master'])
     full_config['Master'] = temp_config
+
     check_params = check_param_names(class_instance.get_default_config(), full_config['Master'], class_name + ' in ' + module_name)
     if not check_params:
-        print 'Parameter check failed for Master'
+        logging.warning('Parameter check failed for Master')
     
     full_config = apply_flags(full_config, flags)
     class_instance.set_config(full_config)
@@ -166,9 +226,20 @@ def create_master_instance(full_config, flags):
     return class_instance
 
 
+def check_default_module(section_key, master):
+    if master.config[section_key] not in master.full_config:
+        config = master.get_default_module_configs(section_key)
+        master.full_config[master.config[section_key]] = config
+    else:
+        config = master.full_config[master.config[section_key]]
+
+    return config
+
+
 def build_master(raw_flags):
-    files, conf_list = read_flags(sys.argv[1:])
+    files, conf_list = read_flags(raw_flags)
     full_config = accum_config_files(files)
     master = create_master_instance(full_config, conf_list)
+            
     return master
     

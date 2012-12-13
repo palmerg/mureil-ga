@@ -1,9 +1,9 @@
 # Sample data source file, for Marcelle to play with
 
 import numpy
-import mureilbase
+import tools.mureilbase as mureilbase
 
-class Data(mureilbase.Mureilbase):
+class Data(mureilbase.DataSinglePassBase):
     def set_config(self, config):
         return None
 

@@ -1,17 +1,18 @@
 """Implements the BasicPumpedHydro class
 """
 
-import mureilbase
+import tools.mureilbase as mureilbase
 import numpy as np
+import generator.singlepassgenerator as singlepassgenerator
 
-class BasicPumpedHydro(mureilbase.Mureilbase):
+class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
     """Class models a simple pumped hydro system that
        always pumps up when extra supply is available,
        and always releases when excess demand exists.
     """
 
     def set_config(self, config):
-        mureilbase.Mureilbase.set_config(self, config)
+        mureilbase.ConfigurableBase.set_config(self, config)
         # Pre-calculate these for improved speed
         # Instead of calculating explicitly the water that's pumped up, calculate
         # the amount of electricity that's stored.
@@ -41,28 +42,31 @@ class BasicPumpedHydro(mureilbase.Mureilbase):
 
         return config
        
-    def calculate_operation(self, supply_need):
+    def calculate_cost_and_output(self, params, rem_demand, save_result=False):
         """Calculate the time series of electricity in and out for the
         pumped hydro.
         
         Input parameters:
-        supply_need: time series of the difference between demand and supply.
-                     May be positive or negative - negative indicates excess
-                     power is available.
+            params: ignored
+            rem_demand: numpy.array - a time series of the demand remaining
+                to be met. May have negatives indicating excess power available.
+            save_result: boolean, default False - if set, save the results
+                from these params and rem_demand into the self.saved dict.
         
         Returns:
-        hydro_cost: scalar capex for maximum generator capacity used
-        hydro_ts: time series of electricity generation (-ve for consumption)
+            cost: number - capex for maximum generator capacity used 
+            output: numpy.array - Power generated at each timestep, or
+                negative if power consumed.
         """
-        hydro_ts = np.zeros(len(supply_need))
+        output = np.zeros(len(rem_demand))
         elec_res_temp = self.elec_res
         gen = self.config['gen']
         elec_cap = self.elec_cap
         pump_round_trip = self.config['pump_round_trip']
         pump_round_trip_recip = self.pump_round_trip_recip
         
-        for i in range(len(supply_need)):
-            elec_diff = supply_need[i]
+        for i in range(len(rem_demand)):
+            elec_diff = rem_demand[i]
             if elec_diff > 0:
                 elec_to_release = elec_diff
                 if elec_to_release > gen:
@@ -72,7 +76,7 @@ class BasicPumpedHydro(mureilbase.Mureilbase):
                     elec_res_temp = 0
                 else:
                     elec_res_temp -= elec_to_release
-                hydro_ts[i] = elec_to_release
+                output[i] = elec_to_release
             else:
                 elec_to_store = -elec_diff
                 if elec_to_store > gen:
@@ -84,11 +88,23 @@ class BasicPumpedHydro(mureilbase.Mureilbase):
                 else:
                     elec_res_temp += elec_to_store
                 elec_used = elec_to_store * pump_round_trip_recip
-                hydro_ts[i] = -elec_used
+                output[i] = -elec_used
 
-        hydro_max = max(abs(hydro_ts))
-        hydro_cost = hydro_max * self.config['capex']
+        hydro_max = np.max(np.abs(output))
+        cost = hydro_max * self.config['capex']
+        
+        if save_result:
+            self.saved['capacity'] = hydro_max
+            self.saved['output'] = np.copy(output)
+            self.saved['cost'] = cost
+         
+        return cost, output
 
-        return hydro_cost, hydro_ts
 
-    
+    def interpret_to_string(self):
+        if self.saved:
+            return 'Basic Pumped Hydro, maximum generation capacity (MW) {:.2f}'.format(
+                self.saved['capacity'])
+        else:
+            return None
+            
