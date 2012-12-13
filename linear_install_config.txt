@@ -5,7 +5,7 @@ module: simplemureilmaster
 class: SimpleMureilMaster
 optim_type: missed_supply
 iterations: 10000
-output_file: sqrt_cost.pkl
+output_file: linear_install.pkl
 algorithm: Algorithm
 
 [Algorithm]
@@ -18,27 +18,26 @@ gene_mute: 0.1
 pop_size: 50
 mort: 0.5
 nuke_power: 20
-processes: 3
+processes: 2
 seed: 12345
 
 [Solar]
 module: generator.singlepassvariablegenerator
-class: VariableGeneratorSqrtCost
+class: VariableGeneratorLinearInstall
 capex: 50.0
 size: 50
 install: 1000
-max_count: 150
 
 [Wind]
 module: generator.singlepassvariablegenerator
-class: VariableGeneratorSqrtCost
+class: VariableGeneratorLinearInstall
 capex: 3.0
-# Set this to 0.001 to handle a special case in the original code
-# This should be done in some data-converting function
+# Size = 0.001 is so that the data in the input wind data converts to
+# the units requred - there was a divide-by-1000 in the 'wind' code.
+# TODO - solve this properly - when all the units are standardisd.
 size: 0.001
 #wind_turbine: 2.5
 install: 500
-max_count: 6000
 
 [Hydro]
 module: hydro.basicpumpedhydro

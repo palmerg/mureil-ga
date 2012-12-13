@@ -3,9 +3,9 @@
 """
 
 import pupynere as nc
-import mureilbase
+import tools.mureilbase as mureilbase
 
-class Data(mureilbase.Mureilbase):
+class Data(mureilbase.DataSinglePassBase):
     """Read in separate netCDF files for wind, solar and demand.
        Return as whole arrays, on request.
     """
@@ -13,7 +13,7 @@ class Data(mureilbase.Mureilbase):
     def set_config(self, config):
         """Set the config, and read the files into memory.
         """
-        mureilbase.Mureilbase.set_config(self, config)
+        mureilbase.ConfigurableBase.set_config(self, config)
         infile = self.config['dir'] + self.config['wind']
         f = nc.NetCDFFile(infile)
         self.ts_wind = f.variables['ts_wind'][:,:]

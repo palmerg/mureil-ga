@@ -1,9 +1,9 @@
 # Based on Robert's case0
 import pupynere as nc
 
-import mureilbase
-
-class Data(mureilbase.Mureilbase):
+import tools.mureilbase as mureilbase
+ 
+class Data(mureilbase.DataSinglePassBase):
     def set_config(self, config):
         dir = './'
         file = 'CoV_output.nc'
