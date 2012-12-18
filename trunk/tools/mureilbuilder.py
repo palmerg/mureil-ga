@@ -7,12 +7,12 @@
 
 import sys
 import ConfigParser
-import json
 import argparse
 import tools.mureilbase as mureilbase
 import importlib
 import logging
 import tools.mureilexception as mureilexception
+import string
 
 logger = logging.getLogger(__name__)
 
@@ -25,24 +25,23 @@ def read_config_file(filename):
     Returns:
     config -- a nested dict containing the sections (identified by []) in the configuration file, with
     each section dict containing its parameters.
-
-    An arbitrary collection of parameters
-    and types may be entered. Parameters are parsed with the json parser, with those that are not 
-    otherwise decoded recorded as strings. A list in Python syntax [1, 2, 3] etc will come through.
     """
 
     parsed_config = ConfigParser.RawConfigParser()
-    parsed_config.read(filename)
+    read_file = parsed_config.read(filename)
+
+    # ConfigParser.read_file returns a list of filenames read
+    if read_file == []:
+        msg = 'Configuration file ' + filename + ' not opened.'
+        logger.critical(msg)
+        raise mureilexception.ConfigException(msg, __name__, {})
 
     config = {}
 
     for section in parsed_config.sections():
         this_list = {}
         for item in parsed_config.items(section):
-            try:
-                this_list[item[0]] = json.loads(item[1])
-            except ValueError:
-                this_list[item[0]] = item[1]
+            this_list[item[0]] = item[1]
 
         config[section] = this_list
     
@@ -55,7 +54,8 @@ def read_flags(flags):
                  'pop_size': ('algorithm', 'pop_size'),
                  'optim_type': ('Master', 'optim_type'),
                  'processes': ('algorithm', 'processes'),
-                 'output_file' : ('Master', 'output_file')}
+                 'output_file' : ('Master', 'output_file'),
+                 'do_plots' : ('Master', 'do_plots')}
     
     parser = argparse.ArgumentParser()
     
@@ -102,12 +102,7 @@ def read_flags(flags):
     for item in dict_args.keys():
         val = dict_args[item]
         if val is not None:
-            try:
-                val_parsed = json.loads(val)
-            except ValueError:
-                val_parsed = val
-
-            conf_tup = (args_list[item], val_parsed)
+            conf_tup = (args_list[item], val)
             conf_list.append(conf_tup)
     
     return files, conf_list
@@ -135,28 +130,22 @@ def apply_flags(full_config, flags):
             if param in full_config['Master']:
                 full_config['Master'][param] = value
             else:
-                logging.error('Parameter ' + param + ' not found')
+                msg = ('Flag ' + flag + ' alters parameter ' + param + 
+                    ' in Master, but this parameter does not exist') 
+                logging.error(msg)
+                raise mureilexception.ConfigException(msg, __name__ + '.apply_flags', {})
         else:
             if section in full_config['Master']:
                 sect_name = full_config['Master'][section]
                 if param in full_config[sect_name]:
                     full_config[sect_name][param] = value
                 else:
-                    logging.error('Parameter ' + param + ' not found')
+                    msg = ('Flag ' + flag + ' alters parameter ' + param + 
+                        ' in ' + section + ', but this parameter does not exist') 
+                    logging.error(msg)
+                    raise mureilexception.ConfigException(msg, __name__ + '.apply_flags', {})
     
-    return full_config
     
-
-def check_param_names(default_config, new_config, identifier):
-    result = True
-    for param in new_config:
-        if param not in default_config:
-            if param not in ['class', 'module']:
-                result = False
-                logging.warning('Parameter ' + param + ' not expected by ' + identifier)
-    
-    return result
-
 
 def check_subclass(class_instance, subclass, caller):
     if not issubclass(class_instance.__class__, subclass):
@@ -167,8 +156,10 @@ def check_subclass(class_instance, subclass, caller):
 
 
 def create_instance(config, section_name, subclass):
-    module_name = config['module']
-    class_name = config['class']
+    model_name = config['model']
+    parts = model_name.split('.')
+    module_name = string.join(parts[0:-1], '.')
+    class_name = parts[-1]
 
     try:
         module = importlib.import_module(module_name)
@@ -184,17 +175,16 @@ def create_instance(config, section_name, subclass):
 
     check_subclass(class_instance, subclass, __name__ + '.create_instance')
 
-    check_params = check_param_names(class_instance.get_default_config(), config, class_name + ' in ' + module_name)
-    if not check_params:
-        logging.warning('Parameter check failed for ' + class_name)
-        
+    config['section'] = section_name
     class_instance.set_config(config)
     return class_instance
     
     
 def create_master_instance(full_config, flags):
-    module_name = full_config['Master']['module']
-    class_name = full_config['Master']['class']
+    model_name = full_config['Master']['model']
+    parts = model_name.split('.')
+    module_name = string.join(parts[0:-1], '.')
+    class_name = parts[-1]
     
     try:
         module = importlib.import_module(module_name)
@@ -210,30 +200,10 @@ def create_master_instance(full_config, flags):
         
     check_subclass(class_instance, mureilbase.MasterInterface, __name__ + '.create_master_instance')
 
-    # Get the default master config in case the config files don't list all the Master members, so that the
-    # 'apply_flags' can work
-    temp_config = class_instance.get_config()
-    temp_config.update(full_config['Master'])
-    full_config['Master'] = temp_config
-
-    check_params = check_param_names(class_instance.get_default_config(), full_config['Master'], class_name + ' in ' + module_name)
-    if not check_params:
-        logging.warning('Parameter check failed for Master')
-    
-    full_config = apply_flags(full_config, flags)
+    full_config['flags'] = flags
     class_instance.set_config(full_config)
     
     return class_instance
-
-
-def check_default_module(section_key, master):
-    if master.config[section_key] not in master.full_config:
-        config = master.get_default_module_configs(section_key)
-        master.full_config[master.config[section_key]] = config
-    else:
-        config = master.full_config[master.config[section_key]]
-
-    return config
 
 
 def build_master(raw_flags):
@@ -242,4 +212,72 @@ def build_master(raw_flags):
     master = create_master_instance(full_config, conf_list)
             
     return master
+
+
+
+def collect_defaults(config_spec):
+    new_config = {}
+    for config_tup in filter(lambda t: t[2] is not None, config_spec):
+        new_config[config_tup[0]] = config_tup[2]
+    return new_config
+    
+
+def apply_conversions(config, config_spec):
+    # Apply conversions, in second position in tuple
+    for config_tup in filter(lambda t: t[1] is not None, config_spec):
+        if config_tup[0] in config:
+            old_val = config[config_tup[0]]
+            config[config_tup[0]] = config_tup[1](old_val)
+
+
+def check_required_params(config, config_spec, class_name):
+    for config_tup in config_spec:
+        if config_tup[0] not in config:
+            if config_tup[0] not in ['model', 'section']:
+                msg = (class_name + ' requires parameter ' + config_tup[0] + 
+                    ' but it is not provided in section ' + config['section'])
+                logging.critical(msg)
+                raise mureilexception.ConfigException(msg, __name__ + '.check_required_params', {})
+
+
+def check_for_extras(config, config_spec, class_name):
+    for config_item in config:
+        if config_item not in ['model', 'section']:
+            if filter(lambda t: t[0] == config_item, config_spec) == []:
+                logging.warning(class_name + ' not expecting parameter ' + config_item +
+                    ' in section ' + config['section'])
+
+
+def check_all_globals_present(config, required, class_name):
+    for param in required:
+        if param not in config:
+            msg = (class_name + ' requires parameter ' + param + ' in global section')
+            logging.critical(msg)
+            raise mureilexception.ConfigException(msg, __name__ + '.check_all_globals_present', {})
+
+
+def check_section_exists(full_config, src, section):
+    if section not in full_config:
+        msg = ('Section ' + section + ' required in config, as specified in Master')
+        logger.critical(msg)
+        raise mureilexception.ConfigException(msg, src, {})
+
+            
+
+def make_string_list(val):
+    """Check if the item is a string, and if so, apply str.split() to make a list of
+    strings. If it's a list of strings, return as is. This allows configuration parameters
+    such as dispatch_order to be initialised from a string or from a config pickle.
+    """
+    if isinstance(val, str):
+        return str.split(val)
+    else:
+        return val
+
+
+def string_to_bool(val):
+    """Convert 'False' to False and 'True' to True and everything else to 'False'
+    """
+    return (val == 'True')
+        
     

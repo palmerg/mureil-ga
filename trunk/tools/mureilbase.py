@@ -1,4 +1,5 @@
 import abc
+import copy
 
 class ConfigurableInterface(object):
     __metaclass__ = abc.ABCMeta
@@ -16,7 +17,7 @@ class ConfigurableInterface(object):
         pass
     
     @abc.abstractmethod
-    def get_default_config(self):
+    def get_config_spec(self):
         pass
 
 
@@ -32,10 +33,6 @@ class MasterInterface(ConfigurableInterface):
         
     @abc.abstractmethod
     def get_full_config(self):
-        pass
-        
-    @abc.abstractmethod
-    def get_default_module_configs(self, key):
         pass
         
 
@@ -54,20 +51,4 @@ class DataSinglePassInterface(ConfigurableInterface):
         pass
 
 
-class ConfigurableBase(ConfigurableInterface):
-    def __init__(self):
-        self.config = self.get_default_config()
-        self.is_configured = False
 
-    def set_config(self, config):
-        self.config.update(config)
-        self.is_configured = True
-        return
-
-    def get_config(self):
-        return self.config
-        
-
-class DataSinglePassBase(ConfigurableBase, DataSinglePassInterface):
-    pass
-    

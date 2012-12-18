@@ -1,10 +1,11 @@
 # Based on Robert's case1
 import pupynere as nc
 
-import tools.mureilbase as mureilbase
+import data.datasinglepassbase as datasinglepassbase
 
-class Data(mureilbase.DataSinglePassBase):
+class Data(datasinglepassbase.DataSinglePassBase):
     def set_config(self, config):
+        configurablebase.ConfigurableBase.set_config(self, config)
         dir = '../access_2month_optim/'
         file = 'CoV_wind_station_output_prox_penalty.nc' #file with _II has smaller exclusion zone
         infile = dir + file
@@ -22,12 +23,6 @@ class Data(mureilbase.DataSinglePassBase):
         self.ts_demand = f.variables['ts_demand'][:]
         
         return None
-
-    def get_default_config(self):
-        config = {
-        }
-        
-        return config
 
     def wind_data(self):
         return self.ts_wind
