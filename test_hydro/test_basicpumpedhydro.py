@@ -64,10 +64,7 @@ class TestBasicPumpedHydro(unittest.TestCase):
             'water_factor': config_arr[4],
             'pump_round_trip': config_arr[5],
             'section': 'test_basicpumpedhydro',
-            'timestep_hrs': 1.0,
-            'min_param_val': 0,
-            'max_param_val': 10000,
-            'variable_cost_mult': 1
+            'timestep_hrs': 1.0
         }
         
         rem_demand = np.genfromtxt(test_file, delimiter = ',',  usecols = (1))
@@ -121,10 +118,7 @@ class TestBasicPumpedHydro(unittest.TestCase):
             'water_factor': config_arr[4],
             'pump_round_trip': config_arr[5],
             'section': 'test_basicpumpedhydro',
-            'timestep_hrs': 1.0,
-            'min_param_val': 0,
-            'max_param_val': 10000,
-            'variable_cost_mult': 1
+            'timestep_hrs': 1.0
         }
         
         self.assertRaises(mureilexception.ConfigException, self.hydro.set_config, config)

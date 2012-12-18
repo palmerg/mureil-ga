@@ -1,6 +1,5 @@
 """Regression test.
-mg_test1 - a short test using sample data of early
-code.
+rhuva_test1 - an early test from Robert
 """
 
 #################################

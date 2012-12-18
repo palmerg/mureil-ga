@@ -13,11 +13,15 @@ class LinearMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
         
         Config:
             cost_per_mwh: float - the cost in $ per MWh of missed supply
+            timestep_hrs: float - the system timestep in hours
+            variable_cost_mult: float - the value to multiply the calculated variable
+                cost by, to account for a shorter dataset than the capex lifetime.
         """
-        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) + 
-            [
-            ('cost_per_mwh', float, None)
-            ])
+        return [
+            ('cost_per_mwh', float, None),
+            ('timestep_hrs', float, None),
+            ('variable_cost_mult', float, None)
+            ]
 
 
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
@@ -75,13 +79,17 @@ class CappedMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
             reliability_reqt: float - a percentage of total demand that can be
                 missed before the penalty applies.
             penalty: float - in $M, the penalty if reliability is not met.
+            timestep_hrs: float - the system timestep in hours
+            variable_cost_mult: float - the value to multiply the calculated variable
+                cost by, to account for a shorter dataset than the capex lifetime.
         """
-        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) + 
-            [
+        return [
             ('cost_per_mwh', float, None),
             ('reliability_reqt', float, None),
-            ('penalty', float, None)
-            ])
+            ('penalty', float, None),
+            ('timestep_hrs', float, None),
+            ('variable_cost_mult', float, None)
+            ]
 
 
     def get_data_types(self):

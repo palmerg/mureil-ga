@@ -280,4 +280,9 @@ def string_to_bool(val):
     """
     return (val == 'True')
         
+
+def update_with_globals(new_config, global_conf, config_spec):
+    for tup in config_spec:
+        if tup[0] in global_conf:
+            new_config[tup[0]] = global_conf[tup[0]]
     
