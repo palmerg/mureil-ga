@@ -1,19 +1,9 @@
 # Sample data source file, for Marcelle to play with
 
 import numpy
-import tools.mureilbase as mureilbase
+import data.datasinglepassbase as datasinglepassbase
 
-class Data(mureilbase.DataSinglePassBase):
-    def set_config(self, config):
-        return None
-
-    def get_default_config(self):
-        config = {
-        }
-        
-        return config
-        
-    
+class Data(datasinglepassbase.DataSinglePassBase):
     def wind_data(self):
         data = numpy.array([
             [0.14, 0.62, 0.80, 0.33],

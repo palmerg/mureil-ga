@@ -7,39 +7,28 @@ Based on GA.py by steven, Jan 7, 2011
 '''
 
 import random, pickle
-import tools.mureilbase as mureilbase
+import tools.configurablebase as configurablebase
 import tools.mureilexception as mureilexception
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-class Engine(mureilbase.ConfigurableBase):
+class Engine(configurablebase.ConfigurableBase):
     def __init__(self):
-        mureilbase.ConfigurableBase.__init__(self)
+        configurablebase.ConfigurableBase.__init__(self)
         self.mp_active = False
     
 
     def set_config(self, config):
         """input: config, dict containing:
-        processes: number of processes to spawn, if 0, no multiprocessing
-        seed: integer to seed randomiser
-        pop_size: integer specifying population size
-        mort: float defining mortality rate
-        min_len: minimum gene length
-        max_len: maximum gene length
-        min_size: minimum gene value value
-        max_size: maximum gene value value
-        base_mute: ?
-        gene_mute: ?
-        gene_test_callback: function handle to calculate cost of gene
         output: None
         Sets up engine to run genetic algorithm
         """
-        self.config.update(config)
+        configurablebase.ConfigurableBase.set_config(self, config)
         self.gene_test = config['gene_test_callback']
         
-        random.seed(config['seed'])
+        random.seed(self.config['seed'])
         self.population = Pop(self.config)
 
         if (self.config['processes'] > 0):
@@ -60,26 +49,44 @@ class Engine(mureilbase.ConfigurableBase):
         return None
 
 
-    def get_default_config(self):
-        config = {
-            'module': 'geneticalgorithm',
-            'class': 'Engine',
-            'min_size': 0,
-            'max_size': 10000,
-            'base_mute': 0.01,
-            'gene_mute': 0.1,
-            'pop_size': 50,
-            'mort': 0.5,
-            'nuke_power': 20,
-            'processes': 0,
-            'seed': 12345,
-            'min_len': 10,
-            'max_len': 10,
-            'gene_test_callback': None
-        }
-        
-        return config
-    
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration:
+            processes: number of processes to spawn, if 0, no multiprocessing
+            seed: integer to seed randomiser
+            pop_size: integer specifying population size
+            mort: float defining mortality rate
+            min_len: minimum gene length
+            max_len: maximum gene length
+            min_param_value: minimum gene value value
+            max_param_value: maximum gene value value
+            base_mute: ?
+            gene_mute: ?
+            gene_test_callback: function handle to calculate cost of gene
+        """
+        return [
+            ('min_param_val', int, None), 
+            ('max_param_val', int, None),
+            ('base_mute', float, None), 
+            ('gene_mute', float, None),
+            ('pop_size', int, None), 
+            ('mort', float, None), 
+            ('nuke_power', int, None), 
+            ('processes', int, None),
+            ('seed', int, None), 
+            ('min_len', int, None), 
+            ('max_len', int, None),
+            ('gene_test_callback', None, self.gene_test_undef)
+            ]
+
+
+    def gene_test_undef(dummy):
+        raise mureilexception.ConfigException('gene_test_callback not set',
+            __name__ + '.gene_test_undef', [])
+            
 
     def finalise(self):
         self.end_multiprocessing()
@@ -233,7 +240,7 @@ class Gene(list):
         self.score = None
         self.values = []
         for i in range(self.length):
-            self.base = Value(self.config['min_size'], self.config['max_size'])
+            self.base = Value(self.config['min_param_val'], self.config['max_param_val'])
             self.values.append(self.base.value)
         return None
     def get_score(self):
@@ -330,8 +337,8 @@ class Pop(list):
         for co_ord in positions:
             i = co_ord[0]
             j = co_ord[1]
-            self.base = Value(self.config['min_size'], 
-                self.config['max_size'])
+            self.base = Value(self.config['min_param_val'], 
+                self.config['max_param_val'])
             self.genes[i].values[j] = self.base.value
         for gene_no in freaks:
             freak = self.genes[gene_no].values
@@ -340,7 +347,7 @@ class Pop(list):
                 freak = freak[:new_len]
             else:
                 while new_len > len(freak):
-                    self.base = Value(self.config['min_size'], self.config['max_size'])
+                    self.base = Value(self.config['min_param_val'], self.config['max_param_val'])
                     freak.append(self.base.value)
             self.genes[gene_no].values = freak
         return None

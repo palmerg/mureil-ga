@@ -10,20 +10,25 @@ class VariableGeneratorBasic(singlepassgenerator.SinglePassGeneratorBase):
     optimisable parameters.
     """
     
-    def get_default_config(self):
-        """Params:
-            capex - the cost in $M for 'size' of capacity
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration:
+            capex - the cost in $M per MW capacity
             size - the size in MW of plant for each unit of param
             type - a string name for the type of generator modelled
             data_type - a string key for the data required from the master for
                 the set_data method.
         """
-        return {
-            'capex': 50,
-            'size': 50,
-            'type': 'solar_pv',
-            'data_type': 'ts_solar'
-        }
+        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) + 
+            [
+            ('capex', float, None),
+            ('size', float, None),
+            ('type', None, None),
+            ('data_type', None, None)
+            ])
 
     
     def get_data_types(self):
@@ -84,7 +89,7 @@ class VariableGeneratorBasic(singlepassgenerator.SinglePassGeneratorBase):
                 determined by the params, and the capacity factor data.
         """
         output = numpy.dot(self.ts_cap_fac, params) * self.config['size']
-        cost = numpy.sum(params) * self.config['capex']
+        cost = numpy.sum(params) * self.config['size'] * self.config['capex']
 
         if save_result:
             self.saved['output'] = output
@@ -108,16 +113,18 @@ class VariableGeneratorLinearInstall(VariableGeneratorBasic):
     installation cost as well as capacity cost.
     """
     
-    def get_default_config(self):
-        """Params:
-            as for VariableGeneratorBasic, with the addition of:
-            install: number, the flagfall for a site.
-        """
-        config = VariableGeneratorBasic.get_default_config(self)
-        config['install'] = 1000
-        return config
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration:
+            Same config as VariableGeneratorBasic, with the addition of:
+            install: float, price in $M to build any plant.
+        """        
+        return VariableGeneratorBasic.get_config_spec(self) + [('install', float, None)]
     
-    
+
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
         """From the params and remaining demand, update the current values, and calculate
         the output power provided and the total cost.
@@ -141,7 +148,7 @@ class VariableGeneratorLinearInstall(VariableGeneratorBasic):
 
         output = numpy.dot(self.ts_cap_fac, params) * self.config['size']
         active_sites = params[params > 0]
-        cost = numpy.sum(active_sites) * self.config['capex'] + (
+        cost = numpy.sum(active_sites) * self.config['capex'] * self.config['size'] + (
             self.config['install'] * active_sites.size)
 
         if save_result:
@@ -157,14 +164,17 @@ class VariableGeneratorExpCost(VariableGeneratorBasic):
     exponential method capacity cost.
     """
     
-    def get_default_config(self):
-        """Params:
-            as for VariableGeneratorBasic, with the addition of:
-            install: number, the flagfall for a site.
-        """
-        config = VariableGeneratorBasic.get_default_config(self)
-        config['install'] = 1000
-        return config
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration:
+            Same config as VariableGeneratorBasic, with the addition of:
+            ### TODO - not yet fixed
+            install: float, price in $M to build any plant.
+        """        
+        return VariableGeneratorBasic.get_config_spec(self) + [('install', float, None)]
     
     
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
@@ -194,8 +204,9 @@ class VariableGeneratorExpCost(VariableGeneratorBasic):
             if params[i] < 1:
                 cost_temp[i] = 0
             else:
-                cpt = ((self.config['install'] - self.config['capex']) *
-                       numpy.exp(-0.1 * (params[i] - 1))) + self.config['capex']
+                cpt = ((self.config['install'] - (self.config['size'] * self.config['capex'])) *
+                       numpy.exp(-0.1 * (params[i] - 1))) + (
+                        self.config['size'] * self.config['capex'])
                 cost_temp[i] = params[i] * cpt
         cost = cost_temp.sum()
 
@@ -210,20 +221,13 @@ class VariableGeneratorExpCost(VariableGeneratorBasic):
 class VariableGeneratorSqrtCost(VariableGeneratorBasic):
     """Override the VariableGeneratorBasic calculate method by calculating an
     square-root method capacity cost.
+            ### TODO - not yet fixed for units
     """
     
-    def get_default_config(self):
-        """Params:
-            as for VariableGeneratorBasic, with the addition of:
-            install: number, the flagfall for a site.
-            max_count: number, the maximum number of units installed, for
-                cost calculation reference.
-        """
-        config = VariableGeneratorBasic.get_default_config(self)
-        config['install'] = 1000
-        config['max_count'] = 150
-        return config
-    
+    def get_config_spec(self):
+        return VariableGeneratorBasic.get_config_spec(self) + [('install', float, None),
+            ('max_count', float, None)]
+
     
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
         """From the params and remaining demand, update the current values, and calculate
@@ -249,7 +253,8 @@ class VariableGeneratorSqrtCost(VariableGeneratorBasic):
 
         cost_temp = numpy.zeros(params.size)
         m_gen = (self.config['capex'] * self.config['max_count']) / numpy.sqrt(self.config['max_count'])
-        gen_add = self.config['install'] + self.config['capex'] - m_gen
+        gen_add = self.config['install'] + (
+            self.config['size'] * self.config['capex']) - m_gen
         for i in range(params.size):
             if params[i] < 1:
                 cost_temp[i] = 0

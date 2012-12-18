@@ -1,6 +1,6 @@
-import tools.mureilbase as mureilbase
+import tools.configurablebase as configurablebase
 
-class SinglePassGeneratorBase(mureilbase.ConfigurableBase):
+class SinglePassGeneratorBase(configurablebase.ConfigurableBase):
     """The base class for generic generators that calculate the
     output and cost based on the full timeseries in one pass. 
     """
@@ -10,12 +10,32 @@ class SinglePassGeneratorBase(mureilbase.ConfigurableBase):
         Valid operation does not occur until all of the 'set'
         functions below, and set_config(), have been called.
         """
-        mureilbase.ConfigurableBase.__init__(self)
+        configurablebase.ConfigurableBase.__init__(self)
         self.data = {}
-        self.param_min = None
-        self.param_max = None
         self.saved = {'capacity': None, 'output': None, 'cost': None, 'other': None}
         
+
+    def set_config(self, config):
+        configurablebase.ConfigurableBase.set_config(self, config)
+
+
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration: (these values typically set automatically by simulation master)
+            timestep_hrs: float - the system timestep in hours
+            min_param_val: integer - the minimum params value to handle
+            max_param_val: integer - the maximum params value to handle
+        """
+        return [
+            ('timestep_hrs', float, None),
+            ('min_param_val', int, None),
+            ('max_param_val', int, None),
+            ('variable_cost_mult', float, None)
+            ]
+
     
     def get_data_types(self):
         """Return a list of keys for each type of
@@ -49,19 +69,6 @@ class SinglePassGeneratorBase(mureilbase.ConfigurableBase):
                 parameters required.
         """
         return 0
-        
-        
-    def set_param_min_max(self, param_min, param_max):
-        """Set the min and max parameter values that the 
-        optimiser works within. The generator code is expected
-        to scale within this as necessary.
-        
-        Inputs:
-            param_min: number - minimum value params can take
-            param_max: number - maximum value params can take
-        """
-        self.param_min = param_min
-        self.param_max = param_max
         
         
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):

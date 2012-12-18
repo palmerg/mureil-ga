@@ -3,17 +3,23 @@ import numpy
 
 class LinearMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
     """Missed supply model charging a flat rate per
-    MW missed.
+    MWh missed.
     """
     
-    def get_default_config(self):
-        """Params: 
-            cost_per_mw - the cost, in $M, for each MW of
-                supply missed, at the given timestep.
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+        
+        Config:
+            cost_per_mwh: float - the cost in $ per MWh of missed supply
         """
-        return {'cost_per_mw': 0.005}
+        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) + 
+            [
+            ('cost_per_mwh', float, None)
+            ])
 
-    
+
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
         """Meets all remaining demand by pricing the missed supply
         penalty.
@@ -26,13 +32,17 @@ class LinearMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
                 from these params and rem_demand into the self.saved dict.
 
         Outputs:
-            cost: number - sum of 'output' times configured cost_per_mw. 
+            cost: number - sum of 'output' times configured cost_per_mwh, adjusted
+                for timestep. 
             output: numpy.array - Power 'generated' at each timestep,
                 simply rem_demand where > 0.
         """
         output = rem_demand.clip(0)
         sum_out = numpy.sum(output)
-        cost = sum_out * self.config['cost_per_mw']
+        # cost is in $M but cost_per_mwh is $
+        cost = 1e-6 * sum_out * self.config['cost_per_mwh'] * self.config['timestep_hrs']
+        # scale up to capex timescale
+        cost *= self.config['variable_cost_mult'] 
         
         if save_result:
             self.saved['capacity'] = sum_out
@@ -52,26 +62,38 @@ class LinearMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
             
 class CappedMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
     """Missed supply model charging a flat rate per
-    MW missed, and a penalty for going over a total limit.
+    MWh missed, and a penalty for going over a total limit.
     """
     
-    def get_default_config(self):
-        """Params: 
-            cost_per_mw - the cost, in $M, for each MW of
-                supply missed, at the given timestep.
-            reliability_reqt - a percentage of total system demand
-                that can be missed before penalty applies.
-            penalty - the cost of exceeding reliability_reqt missed.
-        """
-        return {'cost_per_mw': 0.005, 'reliability_reqt': 0.002,
-            'penalty': 1e10}
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
 
-    
+        Config:
+            cost_per_mwh: float - the cost in $ per MWh of missed supply
+            reliability_reqt: float - a percentage of total demand that can be
+                missed before the penalty applies.
+            penalty: float - in $M, the penalty if reliability is not met.
+        """
+        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) + 
+            [
+            ('cost_per_mwh', float, None),
+            ('reliability_reqt', float, None),
+            ('penalty', float, None)
+            ])
+
+
     def get_data_types(self):
+        """The demand timeseries is required to calculate the reliability requirement.
+        """
         return ['ts_demand']
 
         
     def set_data(self, data):
+        """The demand timeseries is required to calculate the reliability requirement,
+        summed here to find total demand.
+        """
         self.total_demand = sum(data['ts_demand'])
         
     
@@ -88,7 +110,8 @@ class CappedMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
                 from these params and rem_demand into the self.saved dict.
 
         Outputs:
-            cost: number - sum of 'output' times configured cost_per_mw,
+            cost: number - sum of 'output' times configured cost_per_mwh,
+                adjusted for timestep,
                 plus configured penalty if total output / total demand 
                 > reliability_reqt. 
             output: numpy.array - Power 'generated' at each timestep,
@@ -97,13 +120,18 @@ class CappedMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
         output = rem_demand.clip(0)
         sum_out = numpy.sum(output)
 
-        cost = sum_out * self.config['cost_per_mw']
+        # final cost is in $M, but cost_per_mwh is in $
+        cost = 1e-6 * sum_out * self.config['cost_per_mwh'] * self.config['timestep_hrs']
         
         # unreliability as a percentage
         unreliability = sum_out / self.total_demand * 100.0
         
+        # TODO - how often does the penalty apply?
         if (unreliability > self.config['reliability_reqt']): 
             cost += self.config['penalty']
+
+        # Scale up to match capex timescales
+        cost *= self.config['variable_cost_mult'] 
 
         if save_result:
             self.saved['capacity'] = sum_out

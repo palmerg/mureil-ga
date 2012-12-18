@@ -1,4 +1,6 @@
 import pickle
+import numpy
+import pylab
 
 """Module providing helper functions for information input and
 output from mureil, such as pickling.
@@ -70,3 +72,46 @@ def compare_pickles(filename_1, filename_2):
     pickle_equal = (pickle_1 == pickle_2)
     
     return pickle_equal, pickle_1, pickle_2
+
+
+def plot_timeseries(output, demand):
+    """Plot a timeseries of the output of the different generators.
+    The parameter 'output' is a list of tuples of (name, timeseries).
+    """
+    ts = range(len(output[0][1]))
+    
+    pylab.figure()
+    pylab.plot(ts, demand, label='demand', linewidth=2)
+
+    cuml = numpy.zeros(len(ts), dtype=float)
+    
+    for pair in output:
+        cuml += pair[1]
+        pylab.plot(ts, cuml, label=pair[0])
+
+    pylab.legend()        
+    pylab.title('Cumulative power')
+
+    pylab.figure()
+    pylab.plot(ts, demand, label='demand', linewidth=2)
+
+    for pair in output:
+        pylab.plot(ts, pair[1], label=pair[0])
+
+    pylab.legend()        
+    pylab.title('Non-cumulative power')
+
+    pylab.show()
+
+
+def plot_pickle(filename):
+    """Read in the pickle in filename, and plot the timeseries in it.
+    
+    Inputs:
+        filename: string filename, of a pickle file.
+    """
+    data = pickle.load( open( filename, "rb" ) )
+    output = data['best_results']['output']
+    demand = data['ts_demand']
+    plot_timeseries(output, demand)
+       

@@ -4,6 +4,10 @@
 import tools.mureilbase as mureilbase
 import numpy as np
 import generator.singlepassgenerator as singlepassgenerator
+import tools.mureilexception as mureilexception
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
     """Class models a simple pumped hydro system that
@@ -12,35 +16,52 @@ class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
     """
 
     def set_config(self, config):
-        mureilbase.ConfigurableBase.set_config(self, config)
+        singlepassgenerator.SinglePassGeneratorBase.set_config(self, config)
+        
+        # Check the pump_round_trip is <= 1
+        if self.config['pump_round_trip'] > 1:
+            msg = ('BasicPumpedHydro requires pump_round_trip to be less than 1. ' +
+                ' Value = {:.3f}'.format(self.config['pump_round_trip']))
+            logger.critical(msg) 
+            raise mureilexception.ConfigException(msg, 
+                'BasicPumpedHydro.set_config', {})
+
         # Pre-calculate these for improved speed
         # Instead of calculating explicitly the water that's pumped up, calculate
         # the amount of electricity that's stored.
-        self.elec_res = float(self.config['res']) / float(self.config['water_factor'])
-        self.elec_cap = float(self.config['cap']) / float(self.config['water_factor'])
+        # Adjust here for the timestep - elec_res is in units of MW-timesteps.
+        # so 1 MWh = (60/timestep) MW-timesteps
+        self.elec_res = (1 / self.config['timestep_hrs']) * (
+            float(self.config['starting_level']) / float(self.config['water_factor']))
+        self.elec_cap = (1 / self.config['timestep_hrs']) * (
+            float(self.config['dam_capacity']) / float(self.config['water_factor']))
         self.pump_round_trip_recip = 1 / self.config['pump_round_trip']
 
 
-    def get_default_config(self):
-        """Configuration:
-        *** TODO - correct these
-        capex: cost per ?
-        gen: max generator capacity
-        cap: dam capacity in ML (?)
-        res: starting level
-        water_factor: translation ML to MW (?)
-        pump_round_trip: efficiency of pump up / draw down operation
-        """
-        config = {
-            'capex': 2.0,
-            'gen': 2000,
-            'cap': 10000,
-            'res': 5000,
-            'water_factor': 0.01,
-            'pump_round_trip': 0.8
-        }
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
 
-        return config
+        Configuration:
+        capex: cost in $M per MW of capacity
+        max_gen: max generator capacity, in MW
+        ### TODO - should these be GL water?
+        dam_capacity: dam capacity in ML
+        starting_level: starting level in ML
+        water_factor: translation of MWh to ML - 1 MWh requires water_factor ML water
+        pump_round_trip: efficiency of pump up / draw down operation, a proportion
+        """
+        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) +
+            [
+            ('capex', float, None),
+            ('max_gen', float, None),
+            ('dam_capacity', float, None),
+            ('starting_level', float, None),
+            ('water_factor', float, None),
+            ('pump_round_trip', float, 0.8)
+            ])
+
        
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
         """Calculate the time series of electricity in and out for the
@@ -60,7 +81,7 @@ class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
         """
         output = np.zeros(len(rem_demand))
         elec_res_temp = self.elec_res
-        gen = self.config['gen']
+        gen = self.config['max_gen']
         elec_cap = self.elec_cap
         pump_round_trip = self.config['pump_round_trip']
         pump_round_trip_recip = self.pump_round_trip_recip

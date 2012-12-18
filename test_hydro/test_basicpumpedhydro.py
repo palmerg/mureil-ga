@@ -12,54 +12,135 @@ sys.path.append('..')
 
 import unittest
 import numpy as np
+import tools.mureilexception as mureilexception
+import logging
 
 import hydro.basicpumpedhydro
 
 class TestBasicPumpedHydro(unittest.TestCase):
     def setUp(self):
+        logging.basicConfig(level=logging.DEBUG)
         self.hydro = hydro.basicpumpedhydro.BasicPumpedHydro()
 
-    def test_defaults(self):
-        conf = self.hydro.get_config()
-        expected_conf = {
-            'capex': 2.0,
-            'gen': 2000,
-            'cap': 10000,
-            'res': 5000,
-            'water_factor': 0.01,
-            'pump_round_trip': 0.8
-        }
-        self.assertEqual(conf, expected_conf)
-        
-    def test_flow(self):
+    def do_csv_test(self, filename):
+        """ Several test cases have been compiled into separate .csv files
+            These files include the input config (column 0 index 0 - 5),
+            the input test rem_demand (column 1),
+            the calculated output exp_ts (column 2)
+            the calculated output exp_cost (column 0, index 6)   
+            These test files represent the following conditions:
+            test1.csv: rem_demand is positive (ie network requires power) and
+                       less than gen capacity, continues until the dam
+                       is empty
+            test2.csv: rem_demand is positive (ie network requires power)and
+                       exceeds the gen capacity, does not empty the dam
+            test3.csv: suppy_need is negative (ie excess power for storage) and
+                       less than gen capacity,continues until the dam
+                       reaches capacity
+            test4.csv: rem_demand is negative (ie excess power for storage) and
+                       exceeds the gen capacity, does not exceed dam capacity
+            test5.csv: randomly generated rem_demand, both positive and
+                       negative values, some values exceed gen capacity,
+                       does not either exceed dam capacity or empty dam
+            test6.csv: alternate value of pumped_round_trip, note that this
+                       can be set >1 without any error message
+            test7.csv: randomly generated rem_demand initial cap and res are
+                       set equal (ie the dam is full initially)            
+            test8.csv: randomly generated rem_demand, generating capacity is
+                       set to zero
+            test9.csv: randomly generated rem_demand, res is set to zero
+                       (ie the dam is empty initially)      
+            test10.csv: randomly generated rem_demand, alternate value of capex.                                 
+
+        """
+
+        test_file = filename
+        config_arr = np.genfromtxt(test_file, delimiter = ',',  usecols = (0))
         config = {
-            'capex': 2.0,
-            'gen': 2000,
-            'cap': 10000,
-            'res': 5000,
-            'water_factor': 0.01,
-            'pump_round_trip': 0.8
+            'capex': config_arr[0],
+            'max_gen': config_arr[1],
+            'dam_capacity': config_arr[2],
+            'starting_level': config_arr[3],
+            'water_factor': config_arr[4],
+            'pump_round_trip': config_arr[5],
+            'section': 'test_basicpumpedhydro',
+            'timestep_hrs': 1.0,
+            'min_param_val': 0,
+            'max_param_val': 10000,
+            'variable_cost_mult': 1
         }
-        self.hydro.set_config(config)
         
-        supply_need = np.array([50, 100, 100])
+        rem_demand = np.genfromtxt(test_file, delimiter = ',',  usecols = (1))
+
+        exp_ts = np.genfromtxt(test_file, delimiter = ',', usecols = (2))
+
+        exp_cost = config_arr[6]
         
-        #exp_ts = supply_need
-        #exp_cost = max(exp_ts) * config['capex']
-        
-        # Same as above, but explicitly calculated by hand
-        # Try setting 'gen' to 20 above instead of 2000 to see
-        # how the errors appear
-        exp_ts = np.array([50, 100, 100])
-        exp_cost = 200
-        
-        (out_cost, out_ts) = self.hydro.calculate_cost_and_output([], supply_need)
+        try:
+            self.hydro.set_config(config)
+            (out_cost, out_ts) = self.hydro.calculate_cost_and_output([], rem_demand)
+        except mureilexception.MureilException as me:
+            print me.msg
+            self.assertEqual(False, True)    
         
         # The tolist thing is so that the numpy array (which basicpumpedhydro
         # expects) gets turned into a list, which is what unittest expects.
+
+        # Outputs are rounded to 10 decimal places to remove small floating
+        # point errors
+        out_cost = out_cost.round(10)
+        out_ts = out_ts.round(10)
+
         self.assertListEqual(out_ts.tolist(), exp_ts.tolist())
         self.assertEqual(out_cost, exp_cost)
+
+    
+    def test_1(self):
+        self.do_csv_test("test1.csv")        
       
+    def test_2(self):
+        self.do_csv_test("test2.csv")        
+
+    def test_3(self):
+        self.do_csv_test("test3.csv")        
+
+    def test_4(self):
+        self.do_csv_test("test4.csv")        
+
+    def test_5(self):
+        self.do_csv_test("test5.csv")        
+
+    def test_6(self):
+        test_file = "test6.csv"
+        config_arr = np.genfromtxt(test_file, delimiter = ',',  usecols = (0))
+        config = {
+            'capex': config_arr[0],
+            'max_gen': config_arr[1],
+            'dam_capacity': config_arr[2],
+            'starting_level': config_arr[3],
+            'water_factor': config_arr[4],
+            'pump_round_trip': config_arr[5],
+            'section': 'test_basicpumpedhydro',
+            'timestep_hrs': 1.0,
+            'min_param_val': 0,
+            'max_param_val': 10000,
+            'variable_cost_mult': 1
+        }
+        
+        self.assertRaises(mureilexception.ConfigException, self.hydro.set_config, config)
+
+    def test_7(self):
+        self.do_csv_test("test7.csv")        
+
+    def test_8(self):
+        self.do_csv_test("test8.csv")        
+
+    def test_9(self):
+        self.do_csv_test("test9.csv")        
+
+    def test_10(self):
+        self.do_csv_test("test10.csv")        
+
       
 if __name__ == '__main__':
     unittest.main()

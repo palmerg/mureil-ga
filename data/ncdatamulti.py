@@ -3,9 +3,10 @@
 """
 
 import pupynere as nc
-import tools.mureilbase as mureilbase
 
-class Data(mureilbase.DataSinglePassBase):
+import data.datasinglepassbase as datasinglepassbase
+
+class Data(datasinglepassbase.DataSinglePassBase):
     """Read in separate netCDF files for wind, solar and demand.
        Return as whole arrays, on request.
     """
@@ -13,7 +14,7 @@ class Data(mureilbase.DataSinglePassBase):
     def set_config(self, config):
         """Set the config, and read the files into memory.
         """
-        mureilbase.ConfigurableBase.set_config(self, config)
+        configurablebase.ConfigurableBase.set_config(self, config)
         infile = self.config['dir'] + self.config['wind']
         f = nc.NetCDFFile(infile)
         self.ts_wind = f.variables['ts_wind'][:,:]
@@ -28,25 +29,26 @@ class Data(mureilbase.DataSinglePassBase):
         
         return None
 
-    def get_default_config(self):
-        """The default config is incomplete as filenames
-           for wind, solar and demand must be specified.
 
-           Configuration:
-           dir: full or relative path to file directory
-           wind: filename of netCDF file with wind data, in ts_wind variable.
-           solar: filename of netCDF file with solar data, in ts_solar variable.
-           demand: filename of netCDF file with demand data, in ts_demand variable.
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration:
+        dir: full or relative path to file directory
+        wind: filename of netCDF file with wind data, in ts_wind variable.
+        solar: filename of netCDF file with solar data, in ts_solar variable.
+        demand: filename of netCDF file with demand data, in ts_demand variable.
         """
-        config = {
-            'dir': './',
-            'wind': None,
-            'solar': None,
-            'demand': None
-        }
+        return [
+            ('dir', None, './'),
+            ('wind', None, None),
+            ('solar', None, None),
+            ('demand', None, None)
+            ]
         
-        return config
-
+    
     def wind_data(self):
         """Return the full wind timeseries as an array.
         """

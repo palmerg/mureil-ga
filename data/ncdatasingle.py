@@ -4,9 +4,9 @@
 
 import pupynere as nc
 
-import tools.mureilbase as mureilbase
+import data.datasinglepassbase as datasinglepassbase
 
-class Data(mureilbase.DataSinglePassBase):
+class Data(datasinglepassbase.DataSinglePassBase):
     """Read in a single netCDF file for wind, solar and demand.
        Return as whole arrays, on request.
     """
@@ -14,7 +14,7 @@ class Data(mureilbase.DataSinglePassBase):
     def set_config(self, config):
         """Set the config, and read the files into memory.
         """
-        mureilbase.ConfigurableBase.set_config(self, config)
+        configurablebase.ConfigurableBase.set_config(self, config)
         infile = self.config['dir'] + self.config['file']
         f = nc.NetCDFFile(infile)
         self.ts_wind = f.variables['ts_wind'][:,:]
@@ -22,21 +22,21 @@ class Data(mureilbase.DataSinglePassBase):
         self.ts_demand = f.variables['ts_demand'][:]
         return None
 
-    def get_default_config(self):
-        """The default config is incomplete as filename
-           must be specified.
 
-           Configuration:
-           dir: full or relative path to file directory
-           wind: filename of netCDF file, which has wind in ts_wind,
-                 solar in ts_solar and demand in ts_demand.
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration:
+        dir: full or relative path to file directory
+        file: filename of netCDF file, which has wind in ts_wind,
+             solar in ts_solar and demand in ts_demand.
         """
-        config = {
-            'dir': './',
-            'file': None
-        }
-        
-        return config
+        return [
+            ('dir', None, './'),
+            ('file', None, None),
+            ]
 
         
     def wind_data(self):
