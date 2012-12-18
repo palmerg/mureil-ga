@@ -19,24 +19,6 @@ class SinglePassGeneratorBase(configurablebase.ConfigurableBase):
         configurablebase.ConfigurableBase.set_config(self, config)
 
 
-    def get_config_spec(self):
-        """Return a list of tuples of format (name, conversion function, default),
-        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
-        default value, e.g. ('name', None, None)
-
-        Configuration: (these values typically set automatically by simulation master)
-            timestep_hrs: float - the system timestep in hours
-            min_param_val: integer - the minimum params value to handle
-            max_param_val: integer - the maximum params value to handle
-        """
-        return [
-            ('timestep_hrs', float, None),
-            ('min_param_val', int, None),
-            ('max_param_val', int, None),
-            ('variable_cost_mult', float, None)
-            ]
-
-    
     def get_data_types(self):
         """Return a list of keys for each type of
         data required, for example ts_wind, ts_demand.

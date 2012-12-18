@@ -15,13 +15,19 @@ class InstantMaxThermal(singlepassgenerator.SinglePassGeneratorBase):
             capex: float - Cost in $M per MW of capacity installed
             fuel_price_mwh: float - Cost in $ per MWh generated
             carbon_price_mwh: float - Cost in $ per MWh generated
+            timestep_hrs: float - the system timestep in hours
+            min_param_val: integer - the minimum params value to handle
+            max_param_val: integer - the maximum params value to handle
+            variable_cost_mult: float - the value to multiply the calculated variable
+                cost by, to account for a shorter dataset than the capex lifetime.
         """
-        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) +
-            [
+        return [
             ('capex', float, None),
             ('fuel_price_mwh', float, None),
-            ('carbon_price_mwh', float, None)
-            ])
+            ('carbon_price_mwh', float, None),
+            ('timestep_hrs', float, None),
+            ('variable_cost_mult', float, None)
+            ]
       
         
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
@@ -76,13 +82,17 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
             capex: float - Cost in $M per MW of capacity installed
             fuel_price_mwh: float - Cost in $ per MWh generated
             carbon_price_mwh: float - Cost in $ per MWh generated
+            timestep_hrs: float - the system timestep in hours
+            variable_cost_mult: float - the value to multiply the calculated variable
+                cost by, to account for a shorter dataset than the capex lifetime.
         """
-        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) +
-            [
+        return [
             ('capex', float, None),
             ('fuel_price_mwh', float, None),
-            ('carbon_price_mwh', float, None)
-            ])
+            ('carbon_price_mwh', float, None),
+            ('timestep_hrs', float, None),
+            ('variable_cost_mult', float, None)
+            ]
 
     def get_param_count(self):
         """Ask for 1 parameter to specify the capacity of fossil to build.

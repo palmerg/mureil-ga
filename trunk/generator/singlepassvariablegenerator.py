@@ -22,13 +22,12 @@ class VariableGeneratorBasic(singlepassgenerator.SinglePassGeneratorBase):
             data_type - a string key for the data required from the master for
                 the set_data method.
         """
-        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) + 
-            [
+        return [
             ('capex', float, None),
             ('size', float, None),
             ('type', None, None),
             ('data_type', None, None)
-            ])
+            ]
 
     
     def get_data_types(self):

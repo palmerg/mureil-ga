@@ -44,23 +44,26 @@ class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
         default value, e.g. ('name', None, None)
 
         Configuration:
-        capex: cost in $M per MW of capacity
-        max_gen: max generator capacity, in MW
-        ### TODO - should these be GL water?
-        dam_capacity: dam capacity in ML
-        starting_level: starting level in ML
-        water_factor: translation of MWh to ML - 1 MWh requires water_factor ML water
-        pump_round_trip: efficiency of pump up / draw down operation, a proportion
+            capex: cost in $M per MW of capacity
+            max_gen: max generator capacity, in MW
+            ### TODO - should these be GL water?
+            dam_capacity: dam capacity in ML
+            starting_level: starting level in ML
+            water_factor: translation of MWh to ML - 1 MWh requires water_factor ML water
+            pump_round_trip: efficiency of pump up / draw down operation, a proportion
+            timestep_hrs: float - the system timestep in hours
+            min_param_val: integer - the minimum params value to handle
+            max_param_val: integer - the maximum params value to handle
         """
-        return (singlepassgenerator.SinglePassGeneratorBase.get_config_spec(self) +
-            [
+        return [
             ('capex', float, None),
             ('max_gen', float, None),
             ('dam_capacity', float, None),
             ('starting_level', float, None),
             ('water_factor', float, None),
-            ('pump_round_trip', float, 0.8)
-            ])
+            ('pump_round_trip', float, 0.8),
+            ('timestep_hrs', float, None)
+            ]
 
        
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):

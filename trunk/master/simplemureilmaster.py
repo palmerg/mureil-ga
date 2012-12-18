@@ -79,7 +79,9 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         
         if 'timestep_mins' in self.global_conf:
             self.global_conf['timestep_hrs'] = float(self.global_conf['timestep_mins']) / 60
-            
+        elif 'timestep_hrs' in self.global_conf:
+            self.global_conf['timestep_mins'] = float(self.global_conf['timestep_hrs']) * 60
+       
         # Set up the data class and get the data
         mureilbuilder.check_section_exists(self.full_config, __name__, self.config['data'])
         data_config = self.full_config[self.config['data']]
@@ -93,12 +95,13 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         # Need to know the data length to compute variable_cost_mult - to extrapolate the variable
         # cost along the whole time period being modelled. Some NPV discounting could also be
         # incorporated with a discount rate parameter.
-        if 'time_period_yrs' in self.global_conf and 'timestep_hrs' in self.global_conf:
-            data_samples = len(self.data_dict['ts_demand'])
-            yrs_of_data = ((self.global_conf['timestep_hrs'] * float(data_samples)) /
-                (365.25 * 24))
-            self.global_conf['variable_cost_mult'] = (self.global_conf['time_period_yrs'] /
-                yrs_of_data)
+        if 'variable_cost_mult' not in self.global_conf:
+            if 'time_period_yrs' in self.global_conf and 'timestep_hrs' in self.global_conf:
+                data_samples = len(self.data_dict['ts_demand'])
+                yrs_of_data = ((self.global_conf['timestep_hrs'] * float(data_samples)) /
+                    (365.25 * 24))
+                self.global_conf['variable_cost_mult'] = (self.global_conf['time_period_yrs'] /
+                    yrs_of_data)
     
         # Get the algorithm config
         mureilbuilder.check_section_exists(self.full_config, __name__, self.config['algorithm'])

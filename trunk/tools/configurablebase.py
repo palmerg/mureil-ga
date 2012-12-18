@@ -15,7 +15,7 @@ class ConfigurableBase(mureilbase.ConfigurableInterface):
         # Apply defaults, then globals, then new config values
         new_config = mureilbuilder.collect_defaults(config_spec)
         if 'global' in config_copy:
-            new_config.update(config_copy['global'])
+            mureilbuilder.update_with_globals(new_config, config_copy['global'], config_spec)
             del config_copy['global']
         new_config.update(config_copy)
 

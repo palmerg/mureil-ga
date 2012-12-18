@@ -61,8 +61,8 @@ class Engine(configurablebase.ConfigurableBase):
             mort: float defining mortality rate
             min_len: minimum gene length
             max_len: maximum gene length
-            min_param_value: minimum gene value value
-            max_param_value: maximum gene value value
+            min_param_val: minimum gene value value
+            max_param_val: maximum gene value value
             base_mute: ?
             gene_mute: ?
             gene_test_callback: function handle to calculate cost of gene

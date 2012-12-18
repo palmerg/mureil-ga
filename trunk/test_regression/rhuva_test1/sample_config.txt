@@ -74,4 +74,4 @@ model: missed_supply.missedsupply.LinearMissedSupply
 cost_per_mwh: 0.005
 
 [Data]
-model: data.rhuva_data1.Data
+model: rhuva_data1.Data
