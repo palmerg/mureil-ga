@@ -2,6 +2,10 @@ README - simple instructions on how to run MUREIL
 Marcelle Gannon marcelle.gannon@gmail.com
 13 Dec 2012
 
+----------
+Pre-configured example
+----------
+
 At a command line outside python:
 
 > python runmureil.py -f sample_config.txt -d INFO  
@@ -19,3 +23,43 @@ INFO     : missed_supply: Capped Missed-Supply, total 0.00 MW-timestamps missed,
 INFO     : fossil: Instant Fossil Thermal, max capacity (MW) 14362.00
 
 See the test_ directories for more comprehensive and up to date tests.
+
+------------
+Command line
+------------
+
+Options are:
+-f config-file - you can have as many of these as you like. They will accumulate the configs
+	with later files taking precedence.
+
+--iterations count - set the number of iterations to do
+--seed seed - set the random seed.
+--pop_size size - the size of the gene population
+--processes count - how many processes to spawn in multiprocessing
+--output_file filename - the name of the pickle file to write output to
+--do_plots {False,True} - either False or True to print plots at the end of run
+
+-l filename - filename for a log file. If not set, will print to screen.
+-d debuglevel - one of DEBUG, INFO, WARNING, ERROR, CRITICAL. INFO is recommended.
+
+------------
+Config file format
+------------
+
+See sample_config.txt for an example. Note that each section (in square brackets) in the file is
+referenced in the [Master] section so the master knows where to look. Variables in the [Global]
+section are passed to all other models for their use. These may be overwritten by locally set values.
+
+The 'simplemureilmaster.py' master does the following calculations on the global values:
+- creates timestep_mins from timestep_hrs and vice-versa
+- computes 'variable_cost_mult' from the length of the data set and 'time_period_yrs', if required
+	values are there.
+
+See the function 'get_config_spec' in each model's code to see the variables they expect.
+
+-------------
+Data
+-------------
+
+Use of the data/ncdatasingle.py and ncdatamulti.py models is recommended. Note that the 
+SinglePassVariableGenerator model assumes the data is read in as capacity factor fractions.
