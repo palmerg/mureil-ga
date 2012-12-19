@@ -75,7 +75,7 @@ def read_flags(flags):
     extra_config = {}
 
     if dict_args['debuglevel'] is None:
-        debuglevel = 'WARNING'
+        debuglevel = 'INFO'
     else:
         debuglevel = dict_args['debuglevel']
 
