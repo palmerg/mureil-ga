@@ -17,15 +17,15 @@ class Data(datasinglepassbase.DataSinglePassBase):
         datasinglepassbase.DataSinglePassBase.set_config(self, config)
         infile = self.config['dir'] + self.config['wind']
         f = nc.NetCDFFile(infile)
-        self.ts_wind = f.variables['ts_wind'][:,:]
+        self.ts_wind = f.variables[self.config['vbl_wind']][:,:]
 
         infile = self.config['dir'] + self.config['solar']
         f = nc.NetCDFFile(infile)
-        self.ts_solar = f.variables['ts_solar'][:,:]
+        self.ts_solar = f.variables[self.config['vbl_solar']][:,:]
 
         infile = self.config['dir'] + self.config['demand']
         f = nc.NetCDFFile(infile)
-        self.ts_demand = f.variables['ts_demand'][:]
+        self.ts_demand = f.variables[self.config['vbl_demand']][:]
         
         return None
 
@@ -37,15 +37,21 @@ class Data(datasinglepassbase.DataSinglePassBase):
 
         Configuration:
         dir: full or relative path to file directory
-        wind: filename of netCDF file with wind data, in ts_wind variable.
-        solar: filename of netCDF file with solar data, in ts_solar variable.
-        demand: filename of netCDF file with demand data, in ts_demand variable.
+        wind: filename of netCDF file with wind data
+        solar: filename of netCDF file with solar data
+        demand: filename of netCDF file with demand data
+        vbl_wind: variable name within netCDF for wind data. Defaults to ts_wind.
+        vbl_solar: variable name within netCDF for solar data. Defaults to ts_solar.
+        vbl_demand: variable name within netCDF for demand data. Defaults to ts_demand.
         """
         return [
             ('dir', None, './'),
             ('wind', None, None),
             ('solar', None, None),
-            ('demand', None, None)
+            ('demand', None, None),
+            ('vbl_wind', None, 'ts_wind'),
+            ('vbl_solar', None, 'ts_solar'),
+            ('vbl_demand', None, 'ts_demand')
             ]
         
     

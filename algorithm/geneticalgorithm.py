@@ -189,11 +189,7 @@ class Engine(configurablebase.ConfigurableBase):
         output: None
         sends every gene to poolin, then updates all genes scores from poolout data
         """
-        if (self.config['processes'] == 0):
-            for n in range(len(self.population.genes)):
-                vals = self.population.genes[n].values
-                self.population.genes[n].score = self.gene_test(vals)
-        else:
+        if self.mp_active:
             for n in range(len(self.population.genes)):
                 vals = self.population.genes[n].values
                 self.poolin.put((n, vals))
@@ -203,6 +199,11 @@ class Engine(configurablebase.ConfigurableBase):
                 # raise the Empty exception.
                 s = self.poolout.get(True, 60)
                 self.population.genes[s[0]].score = s[1]
+        else:
+            for n in range(len(self.population.genes)):
+                vals = self.population.genes[n].values
+                self.population.genes[n].score = self.gene_test(vals)
+
 
         return None
 
