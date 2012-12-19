@@ -11,6 +11,7 @@ import tools.configurablebase as configurablebase
 import tools.mureilexception as mureilexception
 
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,10 @@ class Engine(configurablebase.ConfigurableBase):
         random.seed(self.config['seed'])
         self.population = Pop(self.config)
 
+        # Multiprocessing as implemented here does not work on Windows
+        if (sys.platform == 'win32'):
+            self.config['processes'] = 0
+            
         if (self.config['processes'] > 0):
             # Set up the multiprocessing
             from multiprocessing import Process, Queue

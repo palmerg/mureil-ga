@@ -13,6 +13,7 @@ global: Global
 optim_type: missed_supply
 iterations: 100
 output_file: mureil_sample.pkl
+dispatch_order: solar wind hydro fossil missed_supply
 
 [Global]
 min_param_val: 0

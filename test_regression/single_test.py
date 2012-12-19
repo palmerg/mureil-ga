@@ -15,11 +15,16 @@ import pickle
 import pprint
 
 def single_test(file_dir, config_name, pickle_name):
-    config_file = file_dir + '/' + config_name
-    pickle_file = file_dir + '/' + pickle_name
-    new_pickle_file = file_dir + '/' + 'test_out.pkl'
-    new_log_file = file_dir + '/' + 'test.log'
-    new_diff_file = file_dir + '/' + 'diff.txt'
+
+    cwd = os.getcwd()
+
+    os.chdir(file_dir)
+
+    config_file = config_name
+    pickle_file = pickle_name
+    new_pickle_file = 'test_out.pkl'
+    new_log_file = 'test.log'
+    new_diff_file = 'diff.txt'
 
     if os.path.isfile(new_pickle_file):
         os.remove(new_pickle_file)
@@ -57,6 +62,8 @@ def single_test(file_dir, config_name, pickle_name):
             f.close()
     else:
         match = False
+
+    os.chdir(cwd)
     
     return match
     
