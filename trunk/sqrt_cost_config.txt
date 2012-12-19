@@ -44,8 +44,7 @@ data_type: ts_solar
 
 [Wind]
 model: generator.singlepassvariablegenerator.VariableGeneratorSqrtCost
-#capex: 3.0
-capex: 1.2
+capex: 3000
 # Set this to 0.001 to handle a special case in the original code
 # This should be done in some data-converting function
 size: 0.001

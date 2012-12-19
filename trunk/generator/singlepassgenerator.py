@@ -1,3 +1,6 @@
+"""Module with base class for single-pass generator objects.
+"""
+
 import tools.configurablebase as configurablebase
 
 class SinglePassGeneratorBase(configurablebase.ConfigurableBase):

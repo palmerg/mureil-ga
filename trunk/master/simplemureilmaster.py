@@ -176,6 +176,7 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             raise mureilexception.ConfigException(msg, 'simplemureilmaster.run', {})
     
         try:
+            self.algorithm.prepare_run()
             for i in range(self.config['iterations']):
                 self.algorithm.do_iteration()
         except mureilexception.AlgorithmException:
@@ -251,8 +252,10 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         else:
             results = None
 
-
         pickle_dict = {}
+        # round the total cost to simplify regression comparison
+        for i in range(len(best_gene_data)):
+            best_gene_data[i][1] = round(best_gene_data[i][1], 0)
         pickle_dict['best_gene_data'] = best_gene_data
 
         full_conf = self.get_full_config()

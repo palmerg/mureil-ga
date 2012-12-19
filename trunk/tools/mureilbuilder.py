@@ -164,13 +164,13 @@ def create_instance(config, section_name, subclass):
     try:
         module = importlib.import_module(module_name)
         class_instance = getattr(module, class_name)()
-    except TypeError:
+    except TypeError as me:
         msg = 'Object (' + module_name + ', ' + class_name + '), requested in section ' + section_name + ' does not fully implement its subclasses'
-        logger.critical(msg)
+        logger.critical(msg, exc_info=me)
         raise mureilexception.ConfigException(msg, __name__, {})
-    except (ImportError, AttributeError):
-        msg = 'Object (' + module_name + ', ' + class_name + '), requested in section ' + section_name + ' could not be found.'
-        logger.critical(msg)
+    except (ImportError, AttributeError, NameError) as me:
+        msg = 'Object (' + module_name + ', ' + class_name + '), requested in section ' + section_name + ' could not be loaded.'
+        logger.critical(msg, exc_info=me)
         raise mureilexception.ConfigException(msg, __name__, {})
 
     check_subclass(class_instance, subclass, __name__ + '.create_instance')
@@ -189,13 +189,13 @@ def create_master_instance(full_config, flags):
     try:
         module = importlib.import_module(module_name)
         class_instance = getattr(module, class_name)()
-    except TypeError:
+    except TypeError as me:
         msg = 'Requested Master of module: ' + module_name + ', class: ' + class_name + ' does not fully implement its subclasses'
-        logger.critical(msg)
+        logger.critical(msg, exc_info=me)
         raise mureilexception.ConfigException(msg, __name__, {})
-    except (ImportError, AttributeError):
+    except (ImportError, AttributeError, NameError) as me:
         msg = 'Requested Master of module: ' + module_name + ', class: ' + class_name + ' could not be loaded.'
-        logger.critical(msg)
+        logger.critical(msg, exc_info=me)
         raise mureilexception.ConfigException(msg, __name__, {})
         
     check_subclass(class_instance, mureilbase.MasterInterface, __name__ + '.create_master_instance')

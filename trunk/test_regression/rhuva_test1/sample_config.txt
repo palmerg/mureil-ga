@@ -43,8 +43,8 @@ data_type: ts_solar
 
 [Wind]
 model: generator.singlepassvariablegenerator.VariableGeneratorLinearInstall
-capex: 1.2
-#capex: 3.0
+#capex: 1.2
+capex: 3000
 # Size = 0.001 is so that the data in the input wind data converts to
 # the units requred - there was a divide-by-1000 in the 'wind' code.
 # TODO - solve this properly - when all the units are standardisd.

@@ -50,5 +50,3 @@ class DataSinglePassInterface(ConfigurableInterface):
     def demand_data(self):
         pass
 
-
-
