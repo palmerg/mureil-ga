@@ -1,10 +1,11 @@
-'''
+"""Module implementing genetic algorithm classes.
+
 Created on Nov 23, 2012
 by mgannon
 
 Based on GA.py by steven, Jan 7, 2011
 @author: steven
-'''
+"""
 
 import random, pickle
 import tools.configurablebase as configurablebase
@@ -16,36 +17,34 @@ import sys
 logger = logging.getLogger(__name__)
 
 class Engine(configurablebase.ConfigurableBase):
+    """Main engine for genetic algorithm. To use, call the
+    following functions, in order:
+    - set_config(config) where config is a dict with fields listed in
+        get_config_spec
+    - prepare_run() so multiprocessing can be started
+    - loop through do_iteration()
+    - get_final() to extract the results
+    - finalise() to clean up multiprocessing
+    """
+    
     def __init__(self):
         configurablebase.ConfigurableBase.__init__(self)
         self.mp_active = False
     
 
     def set_config(self, config):
-        """input: config, dict containing:
-        output: None
-        Sets up engine to run genetic algorithm
+        """Set the configuration of the genetic algorithm, and sets
+        up the starting state.
+        
+        Inputs: config dict - see 'get_config_spec' function for list
+            of parameters.
         """
         configurablebase.ConfigurableBase.set_config(self, config)
-        self.gene_test = config['gene_test_callback']
+        self.gene_test = self.config['gene_test_callback']
         
         random.seed(self.config['seed'])
         self.population = Pop(self.config)
 
-        # Multiprocessing as implemented here does not work on Windows
-        if (sys.platform == 'win32'):
-            self.config['processes'] = 0
-            
-        if (self.config['processes'] > 0):
-            # Set up the multiprocessing
-            from multiprocessing import Process, Queue
-            self.poolin = Queue()
-            self.poolout = Queue()
-            for n in range(self.config['processes']):
-                p = Process(target=self.multiprocess, args=())
-                p.start()
-            self.mp_active = True
-            
         self.pop_score()
         self.clones_data = []
         self.best_gene_data = []
@@ -88,10 +87,33 @@ class Engine(configurablebase.ConfigurableBase):
             ]
 
 
-    def gene_test_undef(dummy):
-        raise mureilexception.ConfigException('gene_test_callback not set',
+    def gene_test_undef(self, dummy):
+        raise mureilexception.ConfigException(
+            'gene_test_callback not set in geneticalgorithm.py',
             __name__ + '.gene_test_undef', [])
             
+
+    def prepare_run(self):
+        """Allows for multiprocessing to be started, if
+        necessary. Done here in a separate call to ensure
+        the master is constructed so the finalise call will
+        work, so multiprocessing does not get left running.
+        """
+        # Multiprocessing as implemented here does not work on Windows
+        if (sys.platform == 'win32'):
+            self.config['processes'] = 0
+            
+        if (self.config['processes'] > 0):
+            # Set up the multiprocessing
+            from multiprocessing import Process, Queue
+            self.poolin = Queue()
+            self.poolout = Queue()
+            for n in range(self.config['processes']):
+                p = Process(target=self.multiprocess, args=())
+                p.start()
+            self.mp_active = True
+            logger.debug('Multiprocessing started')
+
 
     def finalise(self):
         self.end_multiprocessing()
@@ -140,13 +162,20 @@ class Engine(configurablebase.ConfigurableBase):
         self.population.mutate()
         self.pop_score()
         if self.iteration_count % 1 == 0:
-            ## TODO - b_score should not have a lower limit. Fix this code.
-            b_score = -1.e15
+            try:
+                gene = iter(self.population.genes).next()
+                b_score = gene.score
+                bestgene = gene 
+            except StopIteration:
+                b_score = Inf
+                bestgene = None
+
             for gene in self.population.genes:
                 if gene.score > b_score:
                     bestgene = gene 
                     b_score = gene.score
             logger.debug('b_score = %f', b_score)
+
         self.best_gene_data.append([bestgene.values[:], bestgene.score, self.iteration_count])
         self.population.lemming()
         self.population.breed()
@@ -169,7 +198,10 @@ class Engine(configurablebase.ConfigurableBase):
                 vals = self.population.genes[n].values
                 self.poolin.put((n, vals))
             for n in range(len(self.population.genes)):
-                s = self.poolout.get()
+                # Implements a blocking get - will wait up
+                # to 60 seconds for a result to be available, then
+                # raise the Empty exception.
+                s = self.poolout.get(True, 60)
                 self.population.genes[s[0]].score = s[1]
 
         return None
@@ -275,10 +307,9 @@ class Pop(list):
         culls some genes from pop based on mortality rate and genes score
         """
         if len(self.genes) == 0:
-            logger.critical('geneticalgorithm - score one for the Grim Reaper, in lemming')
             msg = 'geneticalgorithm found len(genes) == 0 in lemming'
-            data = {}
-            raise(mureilexception.AlgorithmException(msg, data))
+            logger.critical(msg)
+            raise(mureilexception.AlgorithmException(msg, {}))
             
         pop1 = self.genes
         pop2 = []
@@ -310,10 +341,9 @@ class Pop(list):
         surviving genes and recombining them
         """
         if len(self.genes) == 0:
-            logger.critical('geneticalgorithm - score one for the Grim Reaper, in breed')
             msg = 'geneticalgorithm found len(genes) == 0 in breed'
-            data = {}
-            raise(mureilexception.AlgorithmException(msg, data))
+            logger.critical(msg)
+            raise(mureilexception.AlgorithmException(msg, {}))
 
         while len(self.genes) < self.config['pop_size']:
             mum = random.choice(self.genes)

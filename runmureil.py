@@ -17,9 +17,9 @@ def runmureil(flags):
             master.run()
         except mureilexception.MureilException as me:
             handle_exception(me)
-        except:
-            logger.critical('Execution stopped on unhandled exception')
-            raise
+        except Exception as me:
+            logger.critical('Execution stopped on unhandled exception',
+                exc_info=me)
         finally:
             master.finalise()
 

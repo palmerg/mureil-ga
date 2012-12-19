@@ -63,3 +63,37 @@ Data
 
 Use of the data/ncdatasingle.py and ncdatamulti.py models is recommended. Note that the 
 SinglePassVariableGenerator model assumes the data is read in as capacity factor fractions.
+
+--------------
+Helper functions
+--------------
+
+The following scripts are in the mureil-ga directory. Run at command prompt:
+
+----
+python plotpickle.py pickle_filename
+
+to draw plots of cumulative and separate power timeseries
+
+----
+python printpickle.py pickle_filename > output_filename
+
+to dump the pickle file to a text file
+
+
+------------
+Testing
+------------
+
+The directories test_hydro and test_regression contain test scripts that use the
+Python unittest framework. More tests can be added in a similar way. See the unittest
+documentation in the Python documentation.
+
+In test_hydro:
+python test_basicpumpedhydro.py -v
+
+In test_regression/mg_test1 and test_regression/rhuva_test1 run:
+python test.py -v
+
+and expect it to finish with 'ok'.
+
