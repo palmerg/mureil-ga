@@ -5,7 +5,7 @@ import data.datasinglepassbase as datasinglepassbase
 
 class Data(datasinglepassbase.DataSinglePassBase):
     def set_config(self, config):
-        configurablebase.ConfigurableBase.set_config(self, config)
+        datasinglepassbase.DataSinglePassBase.set_config(self, config)
         dir = './'
         file = 'CoV_output.nc'
         infile = dir + file

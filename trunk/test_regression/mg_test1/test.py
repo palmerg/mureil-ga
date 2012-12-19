@@ -7,8 +7,8 @@ code.
 #### PUT YOUR FILENAMES HERE ####
 #################################
 
-config = '/sample_config.txt'
-pickle = '/mureil_sample.pkl'
+config = 'sample_config.txt'
+pickle = 'mureil_sample.pkl'
 
 import sys
 sys.path.append('../..')

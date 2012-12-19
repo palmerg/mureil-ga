@@ -14,7 +14,7 @@ class Data(datasinglepassbase.DataSinglePassBase):
     def set_config(self, config):
         """Set the config, and read the files into memory.
         """
-        configurablebase.ConfigurableBase.set_config(self, config)
+        datasinglepassbase.DataSinglePassBase.set_config(self, config)
         infile = self.config['dir'] + self.config['wind']
         f = nc.NetCDFFile(infile)
         self.ts_wind = f.variables['ts_wind'][:,:]

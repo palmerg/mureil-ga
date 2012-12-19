@@ -10,6 +10,8 @@
 import sys
 sys.path.append('..')
 
+import os
+
 import unittest
 import numpy as np
 import tools.mureilexception as mureilexception
@@ -54,6 +56,10 @@ class TestBasicPumpedHydro(unittest.TestCase):
 
         """
 
+        test_dir = os.path.dirname(os.path.realpath(__file__)) 
+        cwd = os.getcwd()
+        os.chdir(test_dir)
+
         test_file = filename
         config_arr = np.genfromtxt(test_file, delimiter = ',',  usecols = (0))
         config = {
@@ -90,6 +96,8 @@ class TestBasicPumpedHydro(unittest.TestCase):
 
         self.assertListEqual(out_ts.tolist(), exp_ts.tolist())
         self.assertEqual(out_cost, exp_cost)
+    
+        os.chdir(cwd)
 
     
     def test_1(self):
@@ -108,6 +116,10 @@ class TestBasicPumpedHydro(unittest.TestCase):
         self.do_csv_test("test5.csv")        
 
     def test_6(self):
+        test_dir = os.path.dirname(os.path.realpath(__file__)) 
+        cwd = os.getcwd()
+        os.chdir(test_dir)
+
         test_file = "test6.csv"
         config_arr = np.genfromtxt(test_file, delimiter = ',',  usecols = (0))
         config = {
@@ -122,6 +134,9 @@ class TestBasicPumpedHydro(unittest.TestCase):
         }
         
         self.assertRaises(mureilexception.ConfigException, self.hydro.set_config, config)
+
+        os.chdir(cwd)
+        
 
     def test_7(self):
         self.do_csv_test("test7.csv")        
