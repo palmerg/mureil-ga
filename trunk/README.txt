@@ -1,6 +1,6 @@
 README - simple instructions on how to run MUREIL
 Marcelle Gannon marcelle.gannon@gmail.com
-13 Dec 2012
+20 Dec 2012
 
 ----------
 Pre-configured example
@@ -8,19 +8,18 @@ Pre-configured example
 
 At a command line outside python:
 
-> python runmureil.py -f sample_config.txt -d INFO  
+> python runmureil.py -f asst5_config.txt 
 
 produces the following output:
 
-CRITICAL : Run started at Thu Dec 13 14:56:19 2012
-CRITICAL : Run time: 4.54 seconds
-INFO     : best gene was: [138, 281, 588, 5699, 7817, 7190]
-INFO     : on loop 13, with score -120923.720000
-INFO     : solar: Solar_Thermal with capacities (MW): 6900.00  14050.00 
-INFO     : wind: Wind with capacities (MW): 1470.00  14247.50  19542.50  17975.00 
-INFO     : hydro: Basic Pumped Hydro, maximum generation capacity (MW) 2000.00
-INFO     : missed_supply: Capped Missed-Supply, total 0.00 MW-timestamps missed, unreliability 0.000%
-INFO     : fossil: Instant Fossil Thermal, max capacity (MW) 14362.00
+CRITICAL : Run started at Thu Dec 20 10:42:48 2012
+CRITICAL : Run time: 8.50 seconds
+INFO     : best gene was: [854, 388, 83, 850, 1764, 2163]
+INFO     : on loop 976, with score -189399.751200
+INFO     : solar ($M 12420.00) : Solar_Thermal with capacities (MW): 8540.00  3880.00 
+INFO     : wind ($M 97200.00) : Wind with capacities (MW): 830.00  8500.00  17640.00  21630.00 
+INFO     : fossil ($M 79779.75) : Instant Fossil Thermal, max capacity (MW) 16723.80
+INFO     : Total cost ($M): 189399.75
 
 See the test_ directories for more comprehensive and up to date tests.
 
@@ -30,7 +29,7 @@ Command line
 
 Options are:
 -f config-file - you can have as many of these as you like. They will accumulate the configs
-	with later files taking precedence.
+	with later files taking precedence. See 'batch files' below for an example of this.
 
 --iterations count - set the number of iterations to do
 --seed seed - set the random seed.
@@ -63,6 +62,19 @@ Data
 
 Use of the data/ncdatasingle.py and ncdatamulti.py models is recommended. Note that the 
 SinglePassVariableGenerator model assumes the data is read in as capacity factor fractions.
+
+-------------
+Batch script
+-------------
+
+See runmulti.py for an example of a batch processing script that creates a bunch
+of extra config files for a series of values of a parameter, runs a simulation these
+files in addition to the base config file, then collects the results. 
+
+Note that you can update any of the 
+configuration script values in this way - including 'model', and you can add extra
+parameters such as 'install' as required - just put them in the extra config file.
+
 
 --------------
 Helper functions
@@ -97,3 +109,26 @@ python test.py -v
 
 and expect it to finish with 'ok'.
 
+
+--------------
+Profiling
+--------------
+
+Profiling will help identify which parts of the program are taking the longest to run.
+
+See:
+http://docs.python.org/2/library/profile.html#instant-user-s-manual
+
+Run:
+
+python -m cProfile runmureil.py -f sample_config.txt > sample_config.prof
+
+and browse sample_config.prof to find where the time goes. It's the 'total_time'
+column that's probably of most interest. With sample_config.txt you can see that
+'total_time' for the calculate function is most of the run time of the sim. This
+is not surprising as this is the only calculate function that has a looped
+calculation in it - the others are all matrix maths which numpy does in a flash.
+
+There are ways to sort and search this information - see the help file for details.
+Basic rule is - don't spend time optimising your code until you know what's taking
+all the time to run.
