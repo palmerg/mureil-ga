@@ -1,5 +1,6 @@
 import generator.singlepassgenerator as singlepassgenerator
 import numpy
+import copy
 
 class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
     """A slow-response thermal generator that looks at the timeseries to
@@ -66,7 +67,7 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
             output: numpy.array - Power generated at each timestep.
          """
  
-        max_cap = params[0] * 100
+        capacity = params[0] * 100
         # numpy.clip sets lower and upper bounds on array values
         #output = rem_demand.clip(0, max_cap)
         output = numpy.zeros(len(rem_demand), dtype=float)
@@ -76,12 +77,16 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
         # 'output'. Parameter 'self.config['ramp_time_mins']' is available, representing the ramp
         # time to full power in minutes.
  
+        ts_demand = self.ts_demand
+        avail_demand = copy.deepcopy(rem_demand)
+        ramp_time_mins = self.config['ramp_time_mins']
+ 
         variable_cost = numpy.sum(output) * self.config['timestep_hrs'] * (
             self.config['fuel_price_mwh'] + self.config['carbon_price_mwh']) / 1e6
-        cost = variable_cost * self.config['variable_cost_mult'] + self.config['capex'] * max_cap
+        cost = variable_cost * self.config['variable_cost_mult'] + self.config['capex'] * capacity
         
         if save_result:
-            self.saved['capacity'] = max_cap
+            self.saved['capacity'] = capacity
             self.saved['cost'] = cost
             self.saved['output'] = numpy.copy(output)
  
