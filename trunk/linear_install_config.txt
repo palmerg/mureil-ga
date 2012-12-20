@@ -26,7 +26,7 @@ variable_cost_mult: 1.0
 model: algorithm.geneticalgorithm.Engine
 base_mute: 0.01
 gene_mute: 0.1
-pop_size: 50
+pop_size: 100
 mort: 0.5
 nuke_power: 20
 processes: 2
