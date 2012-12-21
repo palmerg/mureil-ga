@@ -67,7 +67,8 @@ model: thermal.instantthermal.InstantMaxThermal
 capex: 1.0
 # fuel price and carbon price are $ per MWh of generation
 fuel_price_mwh: 30000
-carbon_price_mwh: 10000
+carbon_price: 1000
+carbon_intensity: 10
 
 [MissedSupply]
 model: missed_supply.missedsupply.CappedMissedSupply

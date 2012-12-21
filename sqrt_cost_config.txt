@@ -68,7 +68,8 @@ pump_round_trip: 0.8
 model: thermal.instantthermal.InstantMaxThermal
 capex: 1.0
 fuel_price_mwh: 30000
-carbon_price_mwh: 10000
+carbon_price: 10000
+carbon_intensity: 1.0
 
 [MissedSupply]
 model: missed_supply.missedsupply.LinearMissedSupply

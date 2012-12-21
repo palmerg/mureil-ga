@@ -132,3 +132,89 @@ calculation in it - the others are all matrix maths which numpy does in a flash.
 There are ways to sort and search this information - see the help file for details.
 Basic rule is - don't spend time optimising your code until you know what's taking
 all the time to run.
+
+
+-------------------
+SVN
+-------------------
+
+SVN is the version control system on google code. 
+
+A list of useful commands here:
+http://www.thegeekstuff.com/2011/04/svn-command-examples/
+
+The checkout instructions are on google code -> source -> checkout.
+
+Most users will use 'add', 'commit', 'update', 'status' and 'diff'. It's
+good practice before doing a 'commit' to do 'status' and then do
+'diff' on any files with an 'M' (for Modified) in front of them, to
+be sure you know what you've changed.
+
+If you do an 'update' and it says that the merge failed, the file will be in 
+conflict. SVN tries to combine changes that someone else has checked in
+with changes that you may have made locally. If you edit different parts of the
+same file this is likely to work. If you have edited the same parts of the
+file, then it will report a conflict.
+
+See here for how to resolve it:
+http://www.websanova.com/tutorials/svn/svn-conflicts
+
+Don't whatever you do choose the (mc) mine-conflict option if 'update' offers
+you that. What that will do
+is ignore whatever you just updated and just use your new version - so you may
+be throwing away someone else's edits. This is often hard to find out and makes
+people very cross!  (p) postpone is the best option.
+
+
+---------------------
+SlowResponseThermal
+---------------------
+
+In the module thermal/slowresponsethermal.py there are two classes - SlowResponseThermal,
+which takes an optimisable param for capacity in MW, and 
+SlowResponseThermalFixed which takes an extra configuration parameter of
+'fixed_capacity' for a fixed capacity in MW. There's an example config file
+using both of these in slow_ramp_config.txt.
+
+The current (21/12/12) implementation of both these classes just runs the
+generator at full power regardless of demand. The calculate_cost_and_output
+function is in need of filling in! 
+
+A unittest test case for these is set up in test_slowresponsethermal. See the
+notes above on testing, and look at test_basicpumpedhydro.py for a more
+detailed unittest example. From the test_slowresponsethermal directory
+just run 'python test_slowresponsethermal.py -v' and it will execute all
+the tests you have define there. You can add print statements to see what's
+going on. You will need to update the expected outputs when you update the
+code to do something more interesting.
+
+To instantiate the SlowResponseThermal class within a python session, you
+can do what follows, from within the test_thermal.
+If you run it like this within
+Python you can then play with the cost and ts variables, and alter the
+config parameters and rem_demand and ts_demand.
+
+The script interactive_test_thermal.py in test_thermal sets up the paths so
+they work and instantiates example config, ts_demand and rem_demand arrays.
+
+Marcelle@eMachine-PC /c/Data/Marcelle_Uni/MUREIL/mureil-ga/test_thermal
+$ python
+Python 2.7.3 (default, Apr 10 2012, 23:31:26) [MSC v.1500 32 bit (Intel)] on win
+32
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from interactive_test_thermal import *
+>>> print cost
+1500.0225
+>>> print ts
+[ 500.  500.  500.]
+>>> t.config['capex'] = 1.0
+>>> new_cost, new_ts = t.calculate_cost_and_output([5], rem_demand)
+>>> new_cost
+500.02249999999998
+>>> new_ts
+array([ 500.,  500.,  500.])
+>>> print t.config
+{'carbon_price_mwh': 5.0, 'ramp_time_mins': 240.0, 'fuel_price_mwh': 10.0, 'cape
+x': 1.0, 'type': 'bc', 'timestep_hrs': 1.0, 'variable_cost_mult': 1.0}
+>>> print t.ts_demand
+[1 2 3]

@@ -4,7 +4,7 @@ import copy
 
 class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
     """A slow-response thermal generator that looks at the timeseries to
-    determine when to turn on. Optimisable maximum capacity.
+    determine when to turn on. Optimisable capacity.
     """
 
     def get_config_spec(self):
@@ -15,7 +15,8 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
         Configuration:
             capex: float - Cost in $M per MW of capacity installed
             fuel_price_mwh: float - Cost in $ per MWh generated
-            carbon_price_mwh: float - Cost in $ per MWh generated
+            carbon_price: float - Cost in $ per Tonne
+            carbon_intensity: float - in kg/kWh or equivalently T/MWh
             timestep_hrs: float - the system timestep in hours
             variable_cost_mult: float - the value to multiply the calculated variable
                 cost by, to account for a shorter dataset than the capex lifetime.
@@ -25,7 +26,8 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
         return [
             ('capex', float, None),
             ('fuel_price_mwh', float, None),
-            ('carbon_price_mwh', float, None),
+            ('carbon_price', float, None),
+            ('carbon_intensity', float, None),
             ('timestep_hrs', float, None),
             ('variable_cost_mult', float, None),
             ('ramp_time_mins', float, None),
@@ -57,7 +59,7 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
         based on ts_demand and rem_demand.
         
         Inputs:
-            params: specifies capacity
+            params: specifies capacity in MW as params * 100
             rem_demand: numpy.array - a time series of the demand remaining
                  to be met.
             save_result: boolean, default False - if set, save the results
@@ -70,7 +72,7 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
         capacity = params[0] * 100
         # numpy.clip sets lower and upper bounds on array values
         #output = rem_demand.clip(0, max_cap)
-        output = numpy.zeros(len(rem_demand), dtype=float)
+        output = numpy.ones(len(rem_demand), dtype=float) * capacity
  
         # Now write code to decide when to turn it on! 'rem_demand' is demand at this point in the 
         # dispatch hierarchy, and 'self.ts_demand' is the total demand. Put the result into
@@ -81,8 +83,10 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
         avail_demand = copy.deepcopy(rem_demand)
         ramp_time_mins = self.config['ramp_time_mins']
  
+        # TODO - precalculate the functions of config in set_config for improved speed
         variable_cost = numpy.sum(output) * self.config['timestep_hrs'] * (
-            self.config['fuel_price_mwh'] + self.config['carbon_price_mwh']) / 1e6
+            self.config['fuel_price_mwh'] + (
+            self.config['carbon_price'] * self.config['carbon_intensity'])) / 1e6
         cost = variable_cost * self.config['variable_cost_mult'] + self.config['capex'] * capacity
         
         if save_result:
@@ -95,8 +99,50 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
  
     def interpret_to_string(self):
         if self.saved:
-            return 'Ramped Fossil Thermal, type ' + self.config['type'] + ', optimisable, max capacity (MW) {:.2f}'.format(
+            return 'Ramped Fossil Thermal, type ' + self.config['type'] + ', optimisable, capacity (MW) {:.2f}'.format(
                 self.saved['capacity'])
         else:
             return None
+
+
+
+class SlowResponseThermalFixed(SlowResponseThermal):
+    """A slow-response thermal generator that looks at the timeseries to
+    determine when to turn on. Capacity is fixed at fixed_capacity.
+    """
+
+    def calculate_cost_and_output(self, params, rem_demand, save_result=False):
+        """Return the cost and output function from the optimisable slow
+        response thermal, with capacity parameter set to fixed capacity.
+        """
+        return SlowResponseThermal.calculate_cost_and_output(self, 
+            [self.config['fixed_capacity'] / 100], rem_demand, save_result)
+
+    
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+        
+        Configuration:
+            as for SlowResponseThermal, with the addition of:
+            fixed_capacity: MW of capacity installed
+        """
+        return (
+            SlowResponseThermal.get_config_spec(self) + [
+            ('fixed_capacity', float, None)
+            ])
+
+    def get_param_count(self):
+        """No parameters required
+        """
+        return 0
+
+    def interpret_to_string(self):
+        if self.saved:
+            return 'Ramped Fossil Thermal, type ' + self.config['type'] + ', fixed capacity (MW) {:.2f}'.format(
+                self.saved['capacity'])
+        else:
+            return None
+
             
