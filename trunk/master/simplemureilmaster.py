@@ -88,9 +88,9 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         data_config['global'] = self.global_conf
         self.data = mureilbuilder.create_instance(data_config, self.config['data'], mureilbase.DataSinglePassInterface)
         self.data_dict = {}
-        self.data_dict['ts_wind'] = self.data.wind_data()
-        self.data_dict['ts_solar'] = self.data.solar_data()
-        self.data_dict['ts_demand'] = self.data.demand_data()
+        self.data_dict['ts_wind'] = np.array(self.data.wind_data(), dtype=float)
+        self.data_dict['ts_solar'] = np.array(self.data.solar_data(), dtype=float)
+        self.data_dict['ts_demand'] = np.array(self.data.demand_data(), dtype=float)
         
         # Need to know the data length to compute variable_cost_mult - to extrapolate the variable
         # cost along the whole time period being modelled. Some NPV discounting could also be

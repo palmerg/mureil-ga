@@ -23,6 +23,13 @@ class TestBasicPumpedHydro(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
         self.hydro = hydro.basicpumpedhydro.BasicPumpedHydro()
+        test_dir = os.path.dirname(os.path.realpath(__file__)) 
+        self.cwd = os.getcwd()
+        os.chdir(test_dir)
+
+    def tearDown(self):
+        os.chdir(self.cwd)
+
 
     def do_csv_test(self, filename):
         """ Several test cases have been compiled into separate .csv files
@@ -55,10 +62,6 @@ class TestBasicPumpedHydro(unittest.TestCase):
             test10.csv: randomly generated rem_demand, alternate value of capex.                                 
 
         """
-
-        test_dir = os.path.dirname(os.path.realpath(__file__)) 
-        cwd = os.getcwd()
-        os.chdir(test_dir)
 
         test_file = filename
         config_arr = np.genfromtxt(test_file, delimiter = ',',  usecols = (0))
@@ -97,8 +100,6 @@ class TestBasicPumpedHydro(unittest.TestCase):
         self.assertListEqual(out_ts.tolist(), exp_ts.tolist())
         self.assertEqual(out_cost, exp_cost)
     
-        os.chdir(cwd)
-
     
     def test_1(self):
         self.do_csv_test("test1.csv")        

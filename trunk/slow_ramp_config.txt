@@ -16,7 +16,7 @@ blackcoal: BlackCoal
 missed_supply: MissedSupply
 data: Data
 dispatch_order: solar wind browncoal blackcoal hydro gas missed_supply
-do_plots: False
+do_plots: True
 #dispatch_order: solar wind fossil hydro missed_supply
 
 [Global]
@@ -25,6 +25,7 @@ max_param_val: 10000
 timestep_mins: 60
 #time_period_yrs: 20
 variable_cost_mult: 240
+carbon_price: 100
 
 [Algorithm]
 model: algorithm.geneticalgorithm.Engine
@@ -64,14 +65,15 @@ water_factor: 0.01
 pump_round_trip: 0.8
 
 [BrownCoal]
-model: thermal.slowresponsethermal.SlowResponseThermal
+model: thermal.slowresponsethermal.SlowResponseThermalFixed
 capex: 1.0
 # fuel price and carbon price are $ per MWh of generation
 # note these here are not realistic
 fuel_price_mwh: 5
-carbon_price_mwh: 130
+carbon_intensity: 1.3
 ramp_time_mins: 480
 type: Brown_Coal
+fixed_capacity: 2000
 
 [BlackCoal]
 model: thermal.slowresponsethermal.SlowResponseThermal
@@ -79,7 +81,7 @@ capex: 1.0
 # fuel price and carbon price are $ per MWh of generation
 # note these here are not realistic
 fuel_price_mwh: 50
-carbon_price_mwh: 100
+carbon_intensity: 1.0
 ramp_time_mins: 240
 type: Black_Coal
 
@@ -88,9 +90,9 @@ type: Black_Coal
 model: thermal.instantthermal.InstantOptimisableThermal
 capex: 1.0
 # fuel price and carbon price are $ per MWh of generation
-# note these here are not realistic
+# note these here are just plucked out of the air
 fuel_price_mwh: 200
-carbon_price_mwh: 80
+carbon_intensity: 0.8
 
 [MissedSupply]
 model: missed_supply.missedsupply.CappedMissedSupply

@@ -14,17 +14,17 @@ class InstantMaxThermal(singlepassgenerator.SinglePassGeneratorBase):
         Configuration:
             capex: float - Cost in $M per MW of capacity installed
             fuel_price_mwh: float - Cost in $ per MWh generated
-            carbon_price_mwh: float - Cost in $ per MWh generated
+            carbon_price: float - Cost in $ per Tonne
+            carbon_intensity: float - in kg/kWh or equivalently T/MWh
             timestep_hrs: float - the system timestep in hours
-            min_param_val: integer - the minimum params value to handle
-            max_param_val: integer - the maximum params value to handle
             variable_cost_mult: float - the value to multiply the calculated variable
                 cost by, to account for a shorter dataset than the capex lifetime.
         """
         return [
             ('capex', float, None),
             ('fuel_price_mwh', float, None),
-            ('carbon_price_mwh', float, None),
+            ('carbon_price', float, None),
+            ('carbon_intensity', float, None),
             ('timestep_hrs', float, None),
             ('variable_cost_mult', float, None)
             ]
@@ -49,7 +49,8 @@ class InstantMaxThermal(singlepassgenerator.SinglePassGeneratorBase):
         max_cap = numpy.max(output)
         # price and carbon_tax are in $/MWh
         variable_cost = numpy.sum(output) * self.config['timestep_hrs'] * (
-            self.config['fuel_price_mwh'] + self.config['carbon_price_mwh']) / float(1e6)
+            self.config['fuel_price_mwh'] + (
+            self.config['carbon_price'] * self.config['carbon_intensity'])) / float(1e6)
         cost = variable_cost * self.config['variable_cost_mult'] + self.config['capex'] * max_cap
         
         if save_result:
@@ -81,7 +82,8 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
         Configuration:
             capex: float - Cost in $M per MW of capacity installed
             fuel_price_mwh: float - Cost in $ per MWh generated
-            carbon_price_mwh: float - Cost in $ per MWh generated
+            carbon_price: float - Cost in $ per Tonne
+            carbon_intensity: float - in kg/kWh or equivalently T/MWh
             timestep_hrs: float - the system timestep in hours
             variable_cost_mult: float - the value to multiply the calculated variable
                 cost by, to account for a shorter dataset than the capex lifetime.
@@ -89,7 +91,8 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
         return [
             ('capex', float, None),
             ('fuel_price_mwh', float, None),
-            ('carbon_price_mwh', float, None),
+            ('carbon_price', float, None),
+            ('carbon_intensity', float, None),
             ('timestep_hrs', float, None),
             ('variable_cost_mult', float, None)
             ]
@@ -119,7 +122,8 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
         # numpy.clip sets lower and upper bounds on array values
         output = rem_demand.clip(0, max_cap)
         variable_cost = numpy.sum(output) * self.config['timestep_hrs'] * (
-            self.config['fuel_price_mwh'] + self.config['carbon_price_mwh']) / 1e6
+            self.config['fuel_price_mwh'] + (
+            self.config['carbon_price'] * self.config['carbon_intensity'])) / 1e6
         cost = variable_cost * self.config['variable_cost_mult'] + self.config['capex'] * max_cap
         
         if save_result:
