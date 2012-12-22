@@ -5,7 +5,7 @@
    overrides, as listed in the read_flags function.
 """
 
-import sys
+import sys, os
 import ConfigParser
 import argparse
 import tools.mureilbase as mureilbase
@@ -13,6 +13,7 @@ import importlib
 import logging
 import tools.mureilexception as mureilexception
 import string
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -74,27 +75,12 @@ def read_flags(flags):
     
     extra_config = {}
 
-    if dict_args['debuglevel'] is None:
-        debuglevel = 'INFO'
-    else:
-        debuglevel = dict_args['debuglevel']
+    logger_config = {}
+    for arg in ['logfile', 'debuglevel', 'logmodulenames']:
+        logger_config[arg] = dict_args.pop(arg)
 
-    numeric_level = getattr(logging, debuglevel.upper(), None)
-    if not isinstance(numeric_level, int):
-        raise ValueError('Invalid debug level: %s' % debuglevel)
+    do_logger_setup(logger_config)
 
-    if dict_args['logmodulenames']:
-        format_string = '%(levelname)-8s : %(name)s : %(message)s'
-    else:
-        format_string = '%(levelname)-8s : %(message)s'
- 
-    logging.basicConfig(filename=dict_args['logfile'], level=numeric_level,
-        format=format_string)
-
-    dict_args.pop('logfile')
-    dict_args.pop('debuglevel')
-    dict_args.pop('logmodulenames')
-    
     files = dict_args.pop('file')
     
     conf_list = []
@@ -286,3 +272,50 @@ def update_with_globals(new_config, global_conf, config_spec):
         if tup[0] in global_conf:
             new_config[tup[0]] = global_conf[tup[0]]
 
+
+def do_logger_setup(logger_config):
+
+    for arg in ['debuglevel', 'logmodulenames', 'logfile']:
+        if arg not in logger_config:
+            logger_config[arg] = None
+
+    # First, remove any existing handlers
+    root = logging.getLogger()
+    if root.handlers:
+        handlers = copy.copy(root.handlers)
+        for handler in handlers:
+            root.removeHandler(handler)
+ 
+    if logger_config['debuglevel'] is None:
+        debuglevel = 'INFO'
+    else:
+        debuglevel = logger_config['debuglevel']
+
+    numeric_level = getattr(logging, debuglevel.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError('Invalid debug level: %s' % debuglevel)
+
+    # Now create the new handler
+
+    if logger_config['logmodulenames']:
+        format_string = '%(levelname)-8s : %(name)s : %(message)s'
+    else:
+        format_string = '%(levelname)-8s : %(message)s'
+
+    formatter = logging.Formatter(format_string)
+
+    if logger_config['logfile'] is not None:
+        handler = logging.FileHandler(logger_config['logfile'], mode='w')
+    else:
+        handler = logging.StreamHandler()
+ 
+    handler.setFormatter(formatter)
+    root.addHandler(handler) 
+    root.setLevel(numeric_level)
+ 
+ 
+def unittest_path_setup(self, thisfile):
+    test_dir = os.path.dirname(os.path.realpath(thisfile)) 
+    self.cwd = os.getcwd()
+    os.chdir(test_dir)
+    do_logger_setup({})

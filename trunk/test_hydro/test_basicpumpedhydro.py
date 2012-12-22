@@ -15,17 +15,14 @@ import os
 import unittest
 import numpy as np
 import tools.mureilexception as mureilexception
-import logging
+import tools.mureilbuilder as mureilbuilder
 
 import hydro.basicpumpedhydro
 
 class TestBasicPumpedHydro(unittest.TestCase):
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
+        mureilbuilder.unittest_path_setup(self, __file__)
         self.hydro = hydro.basicpumpedhydro.BasicPumpedHydro()
-        test_dir = os.path.dirname(os.path.realpath(__file__)) 
-        self.cwd = os.getcwd()
-        os.chdir(test_dir)
 
     def tearDown(self):
         os.chdir(self.cwd)
@@ -151,7 +148,7 @@ class TestBasicPumpedHydro(unittest.TestCase):
     def test_10(self):
         self.do_csv_test("test10.csv")        
 
-      
+
 if __name__ == '__main__':
     unittest.main()
     
