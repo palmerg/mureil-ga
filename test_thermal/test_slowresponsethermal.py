@@ -15,17 +15,14 @@ import os
 import unittest
 import numpy as np
 import tools.mureilexception as mureilexception
-import logging
+import tools.mureilbuilder as mureilbuilder
 
 import thermal.slowresponsethermal
 
 class TestSlowResponseThermal(unittest.TestCase):
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
+        mureilbuilder.unittest_path_setup(self, __file__)
         self.thermal = thermal.slowresponsethermal.SlowResponseThermal()
-        test_dir = os.path.dirname(os.path.realpath(__file__)) 
-        self.cwd = os.getcwd()
-        os.chdir(test_dir)
 
     def tearDown(self):
         os.chdir(self.cwd)
@@ -70,11 +67,8 @@ class TestSlowResponseThermal(unittest.TestCase):
 
 class TestSlowResponseThermalFixed(unittest.TestCase):
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
+        mureilbuilder.unittest_path_setup(self, __file__)
         self.thermal = thermal.slowresponsethermal.SlowResponseThermalFixed()
-        test_dir = os.path.dirname(os.path.realpath(__file__)) 
-        self.cwd = os.getcwd()
-        os.chdir(test_dir)
 
     def tearDown(self):
         os.chdir(self.cwd)
@@ -117,7 +111,6 @@ class TestSlowResponseThermalFixed(unittest.TestCase):
         self.assertEqual(out_cost, exp_cost)
     
 
-      
 if __name__ == '__main__':
     unittest.main()
     
