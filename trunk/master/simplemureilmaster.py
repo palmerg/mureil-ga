@@ -166,7 +166,7 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         
         self.param_count = param_count
         
-        # Instantiate the algorithm
+        # Instantiate the genetic algorithm
         algorithm_config['min_len'] = param_count
         algorithm_config['max_len'] = param_count
         algorithm_config['gene_test_callback'] = self.gene_test

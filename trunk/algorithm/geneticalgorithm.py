@@ -104,6 +104,7 @@ class Engine(configurablebase.ConfigurableBase):
             ('pop_size', int, None), 
             ('mort', float, None), 
             ('nuke_power', int, None), 
+            ('runyear', int, None), 
             ('processes', int, None),
             ('seed', int, None), 
             ('min_len', int, None), 
@@ -206,6 +207,7 @@ class Engine(configurablebase.ConfigurableBase):
         self.population.breed()
         self.decloner()
         logger.debug('iteration: %d', self.iteration_count)
+
         return None
 
 
