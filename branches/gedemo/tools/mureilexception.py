@@ -1,0 +1,79 @@
+#
+#
+# Copyright (C) University of Melbourne 2012
+#
+#
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+#
+#
+"""Defines exception classes for mureil operations.
+"""
+
+class MureilException(Exception):
+    pass
+
+class AlgorithmException(MureilException):
+    """Exception raised for errors found while running the algorithm.
+
+    Attributes:
+        msg  -- explanation of the error
+        data -- a dict of any useful information to understand the error
+    """
+
+    def __init__(self, msg, data):
+        self.msg = msg
+        self.data = data
+
+
+class ConfigException(MureilException):
+    """Exception raised for problems in building and configuring.
+    
+    Attributes:
+        msg -- explanation of the error
+        source -- the file where the exception occurred
+        data -- a dict of any useful information to understand the error
+    """
+    
+    def __init__(self, msg, source, data):
+        self.msg = msg
+        self.source = source
+        self.data = data
+        
+
+class ClassTypeException(MureilException):
+    """Exception raised when selected class does not implement required
+    sub-class.
+    
+    Attributes:
+        msg -- explanation of the error
+        source -- the file where the exception occurred
+        class_name -- the name of the class instantiated
+        subclass_name -- the name of the class it should have implemented
+        data -- a dict of any useful information to understand the error
+    """
+    
+    def __init__(self, msg, source, class_name, subclass_name, data):
+        self.msg = msg
+        self.source = source
+        self.class_name = class_name
+        self.subclass_name = subclass_name
+        self.data = data
+        
+        
