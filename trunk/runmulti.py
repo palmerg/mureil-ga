@@ -31,7 +31,7 @@ import pickle
 # then runs them.
 
 #solar_cost_list = [1, 2, 3]
-year_list = [2013,2020,2030,2040,2050]
+year_list = [2010,2020,2030,2040,2050]
 
 # Create the config files
 #for solar_cost in solar_cost_list:
@@ -63,7 +63,7 @@ for runyear in year_list:
     filename = 'runyear_{:d}_config.txt'.format(runyear)
     logname = 'runyear_{:d}.log'.format(runyear)
     runmureil.runmureil(['-f', 'GEconfig.txt', '-f', filename, '-l', logname,
-        '--iterations', '1'])
+        '--iterations', '1', '--runyear', runyear)
 
 # Collect the results
 #for runyear in year_list:

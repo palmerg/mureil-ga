@@ -183,6 +183,7 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             ('data', None, 'Data'),
             ('global', None, 'Global'),
             ('iterations', int, 100),
+            ('run_year', int, 2010),
             ('output_file', None, 'mureil.pkl'),
             ('dispatch_order', mureilbuilder.make_string_list, None),
             ('optim_type', None, 'missed_supply'),
@@ -294,6 +295,11 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             mureiloutput.plot_timeseries(results['output'], self.data_dict['ts_demand'])
 
         mureiloutput.pickle_out(pickle_dict, self.config['output_file'])
+
+# ASH  CODE CHANGE #
+
+# here create a JSON file with the same output data sent to the pickle
+# file (exepct the ts variables)
         
         return None
 
