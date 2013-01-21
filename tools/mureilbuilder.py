@@ -81,7 +81,8 @@ def read_flags(flags):
                  'optim_type': ('Master', 'optim_type'),
                  'processes': ('algorithm', 'processes'),
                  'output_file' : ('Master', 'output_file'),
-                 'do_plots' : ('Master', 'do_plots')}
+                 'do_plots' : ('Master', 'do_plots'),
+                 'run_year' : ('algorithm', 'run_year')}
     
     parser = argparse.ArgumentParser()
     
@@ -98,8 +99,6 @@ def read_flags(flags):
 
     dict_args = vars(args)
     
-    extra_config = {}
-
     logger_config = {}
     for arg in ['logfile', 'debuglevel', 'logmodulenames']:
         logger_config[arg] = dict_args.pop(arg)
@@ -151,13 +150,11 @@ def apply_flags(full_config, flags):
                 if param in full_config[sect_name]:
                     full_config[sect_name][param] = value
                 else:
-                    msg = ('Flag ' + flag + ' alters parameter ' + param + 
-                        ' in ' + section + ', but this parameter does not exist') 
+                    msg = 'Flag ' + str(flag) + ' alters parameter ' + str(param) + ' in ' + str(section) + ', but this parameter does not exist' 
                     logging.error(msg)
                     raise mureilexception.ConfigException(msg, __name__ + '.apply_flags', {})
-    
-    
 
+    
 def check_subclass(class_instance, subclass, caller):
     if not issubclass(class_instance.__class__, subclass):
         msg = 'in ' + caller + ' ' + class_instance.__class__.__name__ + ' does not implement ' + subclass.__name__

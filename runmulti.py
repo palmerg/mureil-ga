@@ -43,15 +43,6 @@ year_list = [2010,2020,2030,2040,2050]
 #    f.write('output_file: solar_{:d}.pkl\n'.format(solar_cost))
 #    f.close()
 
-for runyear in year_list:
-    filename = 'runyear_{:d}_config.txt'.format(runyear)
-    f = open(filename, 'w')
-    f.write('[Algorithm]\n')
-    f.write('runyear: {:d}\n'.format(runyear))
-    f.write('[Master]\n')
-    f.write('output_file: runyear_{:d}.pkl\n'.format(runyear))
-    f.close()
-
 # Run the sims
 #for solar_cost in solar_cost_list:
 #    filename = 'solar_{:d}_config.txt'.format(solar_cost)
@@ -60,10 +51,9 @@ for runyear in year_list:
 #        '--iterations', '1'])
 
 for runyear in year_list:
-    filename = 'runyear_{:d}_config.txt'.format(runyear)
-    logname = 'runyear_{:d}.log'.format(runyear)
-    runmureil.runmureil(['-f', 'GEconfig.txt', '-f', filename, '-l', logname,
-        '--iterations', '1', '--runyear', runyear)
+    logname = 'runyear_{:d}.json'.format(runyear)
+    print runyear
+    runmureil.runmureil(['-f GEconfig.txt --output_file ', logname,' --iteration', '1', ' --run_year ', runyear])
 
 # Collect the results
 #for runyear in year_list:
