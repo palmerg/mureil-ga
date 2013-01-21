@@ -24,7 +24,6 @@
 #
 #
 import runmureil
-import pickle
 
 # Example script that generates a batch of
 # config files, to run with asst5_config.txt, and
@@ -62,8 +61,11 @@ for runyear in year_list:
 for runyear in year_list:
     filename = 'runyear_{:d}_config.txt'.format(runyear)
     logname = 'runyear_{:d}.log'.format(runyear)
-    runmureil.runmureil(['-f', 'GEconfig.txt', '-f', filename, '-l', logname,
-        '--iterations', '1', '--runyear', runyear)
+    runmureil.runmureil(['-f', 'GEconfig.txt', 
+                         '-l', logname, 
+                         '--iterations', '1', 
+                         '--run_year', str(runyear), 
+                         '--output_file', 'ge_config_out_%s.json' % str(runyear)])
 
 # Collect the results
 #for runyear in year_list:
