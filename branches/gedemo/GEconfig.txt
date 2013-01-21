@@ -5,7 +5,7 @@ model: master.simplemureilmaster.SimpleMureilMaster
 global: Global
 optim_type: missed_supply
 iterations: 1
-output_file: mureil_GE.pkl
+output_file: mureil_GE.json
 algorithm: Algorithm
 solar: Solar
 wind: Wind
@@ -23,7 +23,6 @@ max_param_val: 10000
 timestep_mins: 60
 #time_period_yrs: 20
 variable_cost_mult: 1.0
-runyear: 2010
 
 [Algorithm]
 model: algorithm.geneticalgorithm.Engine
@@ -35,6 +34,7 @@ nuke_power: 20
 processes: 4
 # if the seed = -9999 then read the values in from the file
 seed: -9999
+run_year: 2010
 
 [Solar]
 model: generator.singlepassvariablegenerator.VariableGeneratorLinearInstall
