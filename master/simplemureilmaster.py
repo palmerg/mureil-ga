@@ -24,7 +24,6 @@
 #
 #
 import numpy as np
-import pickle
 import time
 
 import tools.mureilbuilder as mureilbuilder
@@ -36,6 +35,8 @@ import tools.mureilbase as mureilbase
 import generator.singlepassgenerator as singlepassgenerator
 import logging
 import copy
+
+from os import path
 
 logger = logging.getLogger(__name__)
 
@@ -183,12 +184,11 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             ('data', None, 'Data'),
             ('global', None, 'Global'),
             ('iterations', int, 100),
-            ('run_year', int, 2010),
             ('output_file', None, 'mureil.pkl'),
             ('dispatch_order', mureilbuilder.make_string_list, None),
             ('optim_type', None, 'missed_supply'),
             ('timestep_mins', int, 60),
-            ('do_plots', mureilbuilder.string_to_bool, False)
+            ('do_plots', mureilbuilder.string_to_bool, False),
             ]
 
 
@@ -294,16 +294,30 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         if self.config['do_plots']:
             mureiloutput.plot_timeseries(results['output'], self.data_dict['ts_demand'])
 
-        mureiloutput.pickle_out(pickle_dict, self.config['output_file'])
-
-# ASH  CODE CHANGE #
-
-# here create a JSON file with the same output data sent to the pickle
-# file (exepct the ts variables)
+        output_file = self.config['output_file']
+        output_type = 'json' if output_file.endswith('json') else 'pickle' 
         
-        return None
+        print 'writing %s to %s' % (output_type, output_file)
+         
+        if output_type == 'pickle':
+            mureiloutput.pickle_out(pickle_dict, output_file)
+        
+        elif output_type in ('json', 'js'):
+            
+            import json
+            import numpy
 
-
+            class NumpyAwareJSONEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    if isinstance(obj, numpy.ndarray) and obj.ndim == 1:
+                        return [x for x in obj]
+                    return json.JSONEncoder.default(self, obj)
+            
+            output_file = path.join(path.dirname(__file__), '..', output_file)
+            with open(output_file, 'w') as f:
+                json.dump(pickle_dict, f, cls=NumpyAwareJSONEncoder)
+                
+            
     def calc_cost(self, gene, save_result=False):
 
         params = np.array(gene)

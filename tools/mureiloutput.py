@@ -25,7 +25,7 @@
 #
 import pickle
 import numpy
-import pylab
+
 
 """Module providing helper functions for information input and
 output from mureil, such as pickling.
@@ -103,6 +103,8 @@ def plot_timeseries(output, demand):
     """Plot a timeseries of the output of the different generators.
     The parameter 'output' is a list of tuples of (name, timeseries).
     """
+    import pylab
+    
     ts = range(len(output[0][1]))
     
     pylab.figure()
