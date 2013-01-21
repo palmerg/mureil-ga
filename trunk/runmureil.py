@@ -37,7 +37,7 @@ def runmureil(flags):
     except mureilexception.MureilException as me:
         handle_exception(me)
 
-    if master is not None:    
+    if master:    
         try:
             master.run()
         except mureilexception.MureilException as me:
