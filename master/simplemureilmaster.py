@@ -297,7 +297,7 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         output_file = self.config['output_file']
         output_type = 'json' if output_file.endswith('json') else 'pickle' 
         
-        print 'writing %s to %s' % (output_type, output_file)
+        
          
         if output_type == 'pickle':
             mureiloutput.pickle_out(pickle_dict, output_file)
@@ -312,10 +312,15 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
                     if isinstance(obj, numpy.ndarray) and obj.ndim == 1:
                         return [x for x in obj]
                     return json.JSONEncoder.default(self, obj)
-            
+                
             output_file = path.join(path.dirname(__file__), '..', output_file)
-            with open(output_file, 'w') as f:
-                json.dump(pickle_dict, f, cls=NumpyAwareJSONEncoder)
+            
+            if path.exists(output_file):
+                print 'failed to write to output_file %s - file already exists' % output_file
+            else: 
+                print 'writing %s to %s' % (output_type, output_file)
+                with open(output_file, 'w') as f:
+                    json.dump(pickle_dict, f, cls=NumpyAwareJSONEncoder)
                 
             
     def calc_cost(self, gene, save_result=False):
