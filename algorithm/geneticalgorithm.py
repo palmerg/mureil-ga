@@ -38,8 +38,28 @@ import tools.mureilexception as mureilexception
 
 import logging
 import sys
+from itertools import groupby
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
+
+def accumulate_capacities(json_data):
+    
+    json_data = sorted(json_data, key=lambda e: e['type'] + str(e['decade']))
+
+    accumulated_values = {}
+
+    for entry in json_data:
+        key = entry['type']
+        if key in accumulated_values:
+            entry['capacity'] += accumulated_values[key]
+        else:
+            accumulated_values[key] = entry['capacity']
+
+    return json_data
+        
+        
+
 
 class Engine(configurablebase.ConfigurableBase):
     """Main engine for genetic algorithm. To use, call the
@@ -55,7 +75,6 @@ class Engine(configurablebase.ConfigurableBase):
     def __init__(self):
         configurablebase.ConfigurableBase.__init__(self)
         self.mp_active = False
-    
 
     def set_config(self, config):
         """Set the configuration of the genetic algorithm, and sets
@@ -69,6 +88,39 @@ class Engine(configurablebase.ConfigurableBase):
         
         random.seed(self.config['seed'])
         self.population = Pop(self.config)
+
+
+	import json
+        from os import path
+
+        file_path = path.dirname(__file__) + '/../INITIAL.js'
+	with open(file_path) as f:
+            initial_data = json.load(f)
+            initial_data['generators'] = accumulate_capacities(initial_data['generators'])
+            
+	    #filter out decades > run_year
+            
+
+	import pprint
+
+
+        print [g.values for g in self.population.genes]
+
+        # ASH CODE_CHANGE #
+
+        # populate the gene with [solar,solar,wind,wind,wind,wind] for each runyear value (2010,2020,...2050)
+
+        # maybe create and intermediate list with capacity by year for each technology
+
+        # if runyear = 2010 then solar = 20 and wind = 20
+        # if runyear = 2020 then solar = 20 and wind = 40
+	
+	self.population.genes[0].values = [1,2,3,4,5,6]
+	self.population.genes[1].values = [1,2,3,4,5,6]
+
+
+# perhaps here we'll insert the values from a file rather than with random values
+# use seed = -999 as the indicator to do that.
 
         self.pop_score()
         self.clones_data = []
