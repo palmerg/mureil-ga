@@ -297,8 +297,6 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         output_file = self.config['output_file']
         output_type = 'json' if output_file.endswith('json') else 'pickle' 
         
-        
-         
         if output_type == 'pickle':
             mureiloutput.pickle_out(pickle_dict, output_file)
         
@@ -321,6 +319,10 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
                 print 'writing %s to %s' % (output_type, output_file)
                 with open(output_file, 'w') as f:
                     json.dump(pickle_dict, f, cls=NumpyAwareJSONEncoder)
+        
+        return pickle_dict
+                    
+                    
                 
             
     def calc_cost(self, gene, save_result=False):
