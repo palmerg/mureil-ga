@@ -46,7 +46,7 @@ def runmureil(flags):
             logger.critical('Execution stopped on unhandled exception',
                 exc_info=me)
         finally:
-            master.finalise()
+            return master.finalise()
 
 
 def handle_exception(me):

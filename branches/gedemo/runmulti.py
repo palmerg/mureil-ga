@@ -24,6 +24,12 @@
 #
 #
 import runmureil
+from collections import defaultdict
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--out_file', dest='out_file', default=None)
+args = parser.parse_args()
 
 # Example script that generates a batch of
 # config files, to run with asst5_config.txt, and
@@ -58,14 +64,31 @@ for runyear in year_list:
 #    runmureil.runmureil(['-f', 'GEconfig.txt', '-f', filename, '-l', logname,
 #        '--iterations', '1'])
 
+json_out = defaultdict(dict)
 for runyear in year_list:
-    filename = 'runyear_{:d}_config.txt'.format(runyear)
-    logname = 'runyear_{:d}.log'.format(runyear)
-    runmureil.runmureil(['-f', 'GEconfig.txt', 
-                         '-l', logname, 
+    
+    result = runmureil.runmureil(['-f', 'GEconfig.txt', 
+                         '-l', 'GEConfig.log', 
                          '--iterations', '1', 
-                         '--run_year', str(runyear), 
-                         '--output_file', 'ge_config_out_%s.json' % str(runyear)])
+                         '--run_year', str(runyear),])
+    
+    json_out[str(runyear)] = year_out = defaultdict(dict)
+    year_out['output'] = output_section = defaultdict(dict)
+    year_out['cost'] = cost_section = defaultdict(dict)
+    
+    for generator_type, values in result['best_results']['output']:
+        output_section[generator_type] = str(sum(values))
+    
+    for generator_type, value in result['best_results']['cost']:
+        cost_section[generator_type] = value
+      
+if args.out_file:
+    import json
+    print 'writing json to %s' % args.out_file  
+    with open(args.out_file, 'w') as f:
+        json.dump(json_out, f)
+    
+
 
 # Collect the results
 #for runyear in year_list:
