@@ -105,8 +105,6 @@ class Engine(configurablebase.ConfigurableBase):
             # populate the gene with [solar,solar,wind,wind,wind,wind] for each runyear value (2010,2020,...2050)
             # maybe create and intermediate list with capacity by year for each technology
             
-            print 'using run year %d' % run_year
-    
             wind_generators = [g for g in generators if g['type'] == 'wind']
             solar_generators = [g for g in generators if g['type'] == 'solar']
             

@@ -82,11 +82,12 @@ for runyear in year_list:
     for generator_type, value in result['best_results']['cost']:
         cost_section[generator_type] = value
       
+import json
 if args.out_file:
-    import json
-    print 'writing json to %s' % args.out_file  
     with open(args.out_file, 'w') as f:
         json.dump(json_out, f)
+else:
+    print json.dumps(json_out)        
     
 
 
