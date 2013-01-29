@@ -37,8 +37,12 @@ import tools.mureilexception as mureilexception
 import logging
 import sys
 import copy
+import cgi
+import json
 
 logger = logging.getLogger(__name__)
+form = cgi.FieldStorage()
+formData = form['sysdata'].value
 
 def accumulate_capacities(json_data):
     json_data = sorted(json_data, key=lambda e: e['type'] + str(e['decade']))
@@ -64,7 +68,7 @@ class Engine(configurablebase.ConfigurableBase):
     - get_final() to extract the results
     - finalise() to clean up multiprocessing
     """
-    
+
     def __init__(self):
         configurablebase.ConfigurableBase.__init__(self)
         self.mp_active = False
@@ -84,19 +88,21 @@ class Engine(configurablebase.ConfigurableBase):
 
 
         # run year may be specified as a command line flag
+
         run_year = self.config.get('run_year', None)
         if run_year:
             # Ash & Roger's hack for the GEDemo:
             
-            import json
+            # print 'using run year %d' % run_year
             from os import path
     
-            file_path = path.dirname(__file__) + '/../INITIAL.js'
-            with open(file_path) as f:
-                generators = json.load(f)['generators']
-            
-                # if 'run_year' is specified in the global config, filter out any initial data that isn't == run_year
-                generators = [entry for entry in generators if entry['decade'] <= run_year]
+            #file_path = path.dirname(__file__) + '/../INITIAL.js'
+            #with open(file_path) as f:
+                # generators = json.load(f)['generators']
+            generators = json.loads(formData)['generators']
+        
+            # if 'run_year' is specified in the global config, filter out any initial data that isn't == run_year
+            generators = [entry for entry in generators if entry['decade'] <= run_year]
                 
             # massage the initial data entries so that 
             # the capacity accumulates over the years for generators of the same type
@@ -104,8 +110,6 @@ class Engine(configurablebase.ConfigurableBase):
             
             # populate the gene with [solar,solar,wind,wind,wind,wind] for each runyear value (2010,2020,...2050)
             # maybe create and intermediate list with capacity by year for each technology
-            
-            print 'using run year %d' % run_year
     
             wind_generators = [g for g in generators if g['type'] == 'wind']
             solar_generators = [g for g in generators if g['type'] == 'solar']
