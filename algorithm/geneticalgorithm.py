@@ -99,7 +99,7 @@ class Engine(configurablebase.ConfigurableBase):
             #file_path = path.dirname(__file__) + '/../INITIAL.js'
             #with open(file_path) as f:
                 # generators = json.load(f)['generators']
-            generators = json.loads(formData)['generators']
+            generators = json.loads(formData)['selections']['generators']
         
             # if 'run_year' is specified in the global config, filter out any initial data that isn't == run_year
             generators = [entry for entry in generators if entry['decade'] <= run_year]
