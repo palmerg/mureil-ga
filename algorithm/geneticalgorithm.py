@@ -37,26 +37,8 @@ import tools.mureilexception as mureilexception
 import logging
 import sys
 import copy
-import cgi
-import json
 
 logger = logging.getLogger(__name__)
-form = cgi.FieldStorage()
-formData = form['sysdata'].value
-
-def accumulate_capacities(json_data):
-    json_data = sorted(json_data, key=lambda e: e['type'] + str(e['decade']))
-
-    accumulated_values = {}
-
-    for entry in json_data:
-        key = entry['type']
-        if key in accumulated_values:
-            entry['capacity'] += accumulated_values[key]
-        else:
-            accumulated_values[key] = entry['capacity']
-
-    return json_data
 
 class Engine(configurablebase.ConfigurableBase):
     """Main engine for genetic algorithm. To use, call the
@@ -85,41 +67,6 @@ class Engine(configurablebase.ConfigurableBase):
         
         random.seed(self.config['seed'])
         self.population = Pop(self.config)
-
-
-        # run year may be specified as a command line flag
-
-        run_year = self.config.get('run_year', None)
-        if run_year:
-            # Ash & Roger's hack for the GEDemo:
-            
-            # print 'using run year %d' % run_year
-            from os import path
-    
-            #file_path = path.dirname(__file__) + '/../INITIAL.js'
-            #with open(file_path) as f:
-                # generators = json.load(f)['generators']
-            generators = json.loads(formData)['selections']['generators']
-        
-            # if 'run_year' is specified in the global config, filter out any initial data that isn't == run_year
-            generators = [entry for entry in generators if entry['decade'] <= run_year]
-                
-            # massage the initial data entries so that 
-            # the capacity accumulates over the years for generators of the same type
-            generators = accumulate_capacities(generators)
-            
-            # populate the gene with [solar,solar,wind,wind,wind,wind] for each runyear value (2010,2020,...2050)
-            # maybe create and intermediate list with capacity by year for each technology
-    
-            wind_generators = [g for g in generators if g['type'] == 'wind']
-            solar_generators = [g for g in generators if g['type'] == 'solar']
-            
-            # find out what the wind capacity is for run_year
-            wind_cap = (wind_generators and max(wind_generators, key=lambda g: g['decade'])['capacity']) or 0             
-            solar_cap = (solar_generators and max(solar_generators, key=lambda g: g['decade'])['capacity']) or 0
-                        
-            self.population.genes[0].values = [wind_cap, wind_cap, solar_cap, solar_cap, solar_cap, solar_cap]
-            self.population.genes[1].values = copy.copy(self.population.genes[0].values)
 
         self.pop_score()
         self.clones_data = []
@@ -154,7 +101,6 @@ class Engine(configurablebase.ConfigurableBase):
             ('pop_size', int, None), 
             ('mort', float, None), 
             ('nuke_power', int, None), 
-            ('run_year', int, None), 
             ('processes', int, None),
             ('seed', int, None), 
             ('min_len', int, None), 
