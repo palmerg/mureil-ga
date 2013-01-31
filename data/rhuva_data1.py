@@ -26,6 +26,7 @@
 # Based on Robert's case1
 import pupynere as nc
 
+import numpy
 import data.datasinglepassbase as datasinglepassbase
 
 class Data(datasinglepassbase.DataSinglePassBase):
@@ -35,19 +36,38 @@ class Data(datasinglepassbase.DataSinglePassBase):
         file = 'CoV_wind_station_output_prox_penalty.nc' #file with _II has smaller exclusion zone
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        self.ts_wind = f.variables['CoV_wind'][:,:]
+        ts_wind = f.variables['CoV_wind'][:,:]
 
         file = 'CoV_dsr_station_output_prox_penalty.nc'
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        self.ts_solar = f.variables['CoV_dsr'][:,:]
+        ts_solar = f.variables['CoV_dsr'][:,:]
 
         file = 'Aus_demand_sample_raw.nc'
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        self.ts_demand = f.variables['ts_demand'][:]
+        ts_demand = f.variables['ts_demand'][:]
+        
+        wind_nan = numpy.isnan(ts_wind)
+        solar_nan = numpy.isnan(ts_solar)
+        demand_nan = numpy.isnan(ts_demand)
+        
+        wind_row = wind_nan.any(1)
+        solar_row = solar_nan.any(1)
+        
+        combo = numpy.array([wind_row, solar_row, demand_nan])
+        combo_flat = combo.any(0)
+        
+        self.ts_wind = ts_wind[combo_flat == False, :]
+        self.ts_solar = ts_solar[combo_flat == False, :]
+        self.ts_demand = ts_demand[combo_flat == False]
+        
+        print self.ts_wind.shape
+        print self.ts_solar.shape
+        print self.ts_demand.shape
         
         return None
+
 
     def wind_data(self):
         return self.ts_wind

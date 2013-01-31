@@ -1,45 +1,30 @@
 # Sample MUREIL configuration
 
 [Master]
-model: master.simplemureilmaster.SimpleMureilMaster
+model: master.gemureilmaster.GeMureilMaster
 global: Global
-optim_type: missed_supply
-iterations: 1
 output_file: mureil_GE.json
-algorithm: Algorithm
 solar: Solar
 wind: Wind
-hydro: Hydro
-fossil: Fossil
+coal: Coal
+gas: Gas
 missed_supply: MissedSupply
 data: Data
-dispatch_order: solar wind hydro fossil missed_supply
+dispatch_order: solar wind coal gas missed_supply
 do_plots: False
-#dispatch_order: solar wind fossil hydro missed_supply
+year_list: 2010 2020 2030 2040 2050
 
 [Global]
 min_param_val: 0
 max_param_val: 10000
 timestep_mins: 60
-#time_period_yrs: 20
-variable_cost_mult: 1.0
-
-[Algorithm]
-model: algorithm.geneticalgorithm.Engine
-base_mute: 0.01
-gene_mute: 0.1
-pop_size: 2
-mort: 0.5
-nuke_power: 20
-processes: 4
-# if the seed = -9999 then read the values in from the file
-seed: -9999
-run_year: 2010
+time_period_yrs: 10
+carbon_price: 25
 
 [Solar]
 model: generator.singlepassvariablegenerator.VariableGeneratorLinearInstall
 capex: 1.0
-size: 50
+size: 1
 install: 1000
 type: Solar_Thermal
 data_type: ts_solar
@@ -47,28 +32,25 @@ data_type: ts_solar
 [Wind]
 model: generator.singlepassvariablegenerator.VariableGeneratorLinearInstall
 capex: 1.2
-size: 2.5
+size: 1
 install: 500
 type: Wind
 data_type: ts_wind
 
-[Hydro]
-model: hydro.basicpumpedhydro.BasicPumpedHydro
-capex: 2.0
-max_gen: 2000
-dam_capacity: 10000
-starting_level: 5000
-water_factor: 0.01
-pump_round_trip: 0.8
-
-[Fossil]
-model: thermal.instantthermal.InstantMaxThermal
-#model: thermal.instantthermal.InstantOptimisableThermal
+[Gas]
+model: thermal.instantthermal.InstantOptimisableThermal
 capex: 1.0
-# fuel price and carbon price are $ per MWh of generation
-fuel_price_mwh: 30000
-carbon_price: 10000
+fuel_price_mwh: 30
+carbon_intensity: 0.6
+
+[Coal]
+model: thermal.slowresponsethermal.SlowResponseThermal
+capex: 2.0
+fuel_price_mwh: 10
 carbon_intensity: 1.0
+type: coal
+size: 1
+ramp_time_mins: 0
 
 [MissedSupply]
 model: missed_supply.missedsupply.CappedMissedSupply
@@ -77,4 +59,4 @@ reliability_reqt: 0.002
 penalty: 1000
 
 [Data]
-model: data.mg_sample_data.Data
+model: data.sample_ge_data.Data

@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 print "Content-Type: text/json"
 print
-import runmureil
+import rungedemo
 from collections import defaultdict
 import argparse
 import json;
-import cgi
 
 flags = ['-f', 'GEconfig.txt', '-l', 'GEConfig.log']
 
-form = cgi.FieldStorage()
-input_data = form['sysdata'].value
+file_path = 'new_values_to_model.js'
+
+with open(file_path) as f:
+    input_data = f.read()
 
 all_years_out = rungedemo.rungedemo(flags, input_data)
 

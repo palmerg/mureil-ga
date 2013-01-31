@@ -112,6 +112,7 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
             timestep_hrs: float - the system timestep in hours
             variable_cost_mult: float - the value to multiply the calculated variable
                 cost by, to account for a shorter dataset than the capex lifetime.
+            size - the size in MW of plant for each unit of param
         """
         return [
             ('capex', float, None),
@@ -119,7 +120,8 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
             ('carbon_price', float, None),
             ('carbon_intensity', float, None),
             ('timestep_hrs', float, None),
-            ('variable_cost_mult', float, None)
+            ('variable_cost_mult', float, None),
+            ('size', float, 100)
             ]
 
     def get_param_count(self):
@@ -143,7 +145,7 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
              output: numpy.array - Power generated at each timestep.
          """
  
-        max_cap = params[0] * 100
+        max_cap = params[0] * self.config['size']
         # numpy.clip sets lower and upper bounds on array values
         output = rem_demand.clip(0, max_cap)
         variable_cost = numpy.sum(output) * self.config['timestep_hrs'] * (

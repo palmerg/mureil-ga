@@ -81,9 +81,8 @@ def read_flags(flags):
                  'optim_type': ('Master', 'optim_type'),
                  'processes': ('algorithm', 'processes'),
                  'output_file' : ('Master', 'output_file'),
-                 'do_plots' : ('Master', 'do_plots'),
-                 'run_year' : ('algorithm', 'run_year')}
-    
+                 'do_plots' : ('Master', 'do_plots')}
+                 
     parser = argparse.ArgumentParser()
     
     for arg in args_list:
@@ -188,7 +187,7 @@ def create_instance(config, section_name, subclass):
     return class_instance
     
     
-def create_master_instance(full_config, flags):
+def create_master_instance(full_config, flags, extra_data):
     model_name = full_config['Master']['model']
     parts = model_name.split('.')
     module_name = string.join(parts[0:-1], '.')
@@ -209,15 +208,16 @@ def create_master_instance(full_config, flags):
     check_subclass(class_instance, mureilbase.MasterInterface, __name__ + '.create_master_instance')
 
     full_config['flags'] = flags
+    full_config['extra_data'] = extra_data
     class_instance.set_config(full_config)
     
     return class_instance
 
 
-def build_master(raw_flags):
+def build_master(raw_flags, extra_data = None):
     files, conf_list = read_flags(raw_flags)
     full_config = accum_config_files(files)
-    master = create_master_instance(full_config, conf_list)
+    master = create_master_instance(full_config, conf_list, extra_data)
             
     return master
 
@@ -279,6 +279,17 @@ def make_string_list(val):
     """
     if isinstance(val, str):
         return str.split(val)
+    else:
+        return val
+
+
+def make_int_list(val):
+    """Check if the item is a string, and if so, apply str.split() to make a list of
+    ints. If it's a list of ints, return as is. This allows configuration parameters
+    such as dispatch_order to be initialised from a string or from a config pickle.
+    """
+    if isinstance(val, str):
+        return map(int, str.split(val))
     else:
         return val
 
