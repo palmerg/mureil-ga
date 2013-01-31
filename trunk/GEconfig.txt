@@ -42,6 +42,7 @@ model: thermal.instantthermal.InstantOptimisableThermal
 capex: 1.0
 fuel_price_mwh: 30
 carbon_intensity: 0.6
+size: 1
 
 [Coal]
 model: thermal.slowresponsethermal.SlowResponseThermal
