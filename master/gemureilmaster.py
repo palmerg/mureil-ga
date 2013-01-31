@@ -283,6 +283,9 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
                 demand_driver, self.demand_data[str(year)], str(year))
         
             results = self.evaluate_results(self.params[str(year)])
+
+            #print results['gen_desc']
+            
             all_years_out[str(year)] = year_out = defaultdict(dict)
             year_out['output'] = output_section = defaultdict(dict)
             year_out['cost'] = cost_section = defaultdict(dict)
