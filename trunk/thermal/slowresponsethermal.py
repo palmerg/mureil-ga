@@ -47,6 +47,7 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
                 cost by, to account for a shorter dataset than the capex lifetime.
             ramp_time_mins: float - the ramp-time to full power. Model will linearly
                 ramp to this.
+            size - the size in MW of plant for each unit of param
         """
         return [
             ('capex', float, None),
@@ -56,7 +57,8 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
             ('timestep_hrs', float, None),
             ('variable_cost_mult', float, None),
             ('ramp_time_mins', float, None),
-            ('type', None, None)
+            ('type', None, None),
+            ('size', float, 100)
             ]
 
     def get_param_count(self):
@@ -94,7 +96,7 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
             output: numpy.array - Power generated at each timestep.
          """
  
-        capacity = params[0] * 100
+        capacity = params[0] * self.config['size']
         # numpy.clip sets lower and upper bounds on array values
         #output = rem_demand.clip(0, max_cap)
         output = numpy.ones(len(rem_demand), dtype=float) * capacity
@@ -141,7 +143,7 @@ class SlowResponseThermalFixed(SlowResponseThermal):
         response thermal, with capacity parameter set to fixed capacity.
         """
         return SlowResponseThermal.calculate_cost_and_output(self, 
-            [self.config['fixed_capacity'] / 100], rem_demand, save_result)
+            [self.config['fixed_capacity'] / self.config['size']], rem_demand, save_result)
 
     
     def get_config_spec(self):
