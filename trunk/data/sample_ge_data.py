@@ -2059,6 +2059,18 @@ class Data(datasinglepassbase.DataSinglePassBase):
             22561,
             21563,
             20909,
-            20173])
+            20173], dtype=float)
 
+        ### MG - the data here is for the NEM, but the GE sim starts up only
+        ### with VIC generators, and no interconnects. This gives it a chance ...
+        return data / 4
+
+
+    def demand_drivers(self):
+        # Add in the others for the demand modelling - 
+        # temperature, etc - as required by the demand model.
+        # This just keeps the dummy demand model happy.
+        data = {}
+        data['ts_demand'] = self.demand_data()
         return data
+        
