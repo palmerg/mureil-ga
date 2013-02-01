@@ -47,7 +47,5 @@ def calculate_demand(demand_driver, settings, year, timestep_hrs):
     # an extremely rough use of the efficiency settings
     efficiency_mult = 1 - float(settings['residential_efficiency']) / 100
     
-    print efficiency_mult
-    
     return demand_driver['ts_demand'] * demand_growth_mult[year] * efficiency_mult
     
