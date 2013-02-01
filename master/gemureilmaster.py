@@ -287,14 +287,25 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             #print results['gen_desc']
             
             all_years_out[str(year)] = year_out = defaultdict(dict)
+            
+            # Output, in MWh
             year_out['output'] = output_section = defaultdict(dict)
+            
+            # Cost, in $M
             year_out['cost'] = cost_section = defaultdict(dict)
+            
+            # Total demand, in MWh
+            year_out['demand'] = '{:.2f}'.format(
+                numpy.sum(self.data_dict['ts_demand']) * self.global_conf['timestep_hrs'])
     
             for generator_type, values in results['output']:
-                output_section[generator_type] = str(sum(values))
+                output_section[generator_type] = '{:.2f}'.format(
+                    sum(values) * self.global_conf['timestep_hrs'])
     
             for generator_type, value in results['cost']:
                 cost_section[generator_type] = value
+# or as a string:
+#                cost_section[generator_type] = '{:.2f}'.format(value)
 
         return all_years_out
         
