@@ -125,11 +125,9 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         self.data_dict = {}
         self.data_dict['ts_wind'] = numpy.array(self.data.wind_data(), dtype=float)
         self.data_dict['ts_solar'] = numpy.array(self.data.solar_data(), dtype=float)
-
-        # and load the data for the demand model
-        self.demand_data = json.loads(extra_data)['selections']['demand']    
-
-        self.data_dict['ts_demand'] = numpy.array(self.data.demand_data(), dtype=float)
+        self.data_dict['ts_demand'] = numpy.array(self.data.demand_data(), dtype=float)
+        
+        self.data_dict['demand_drivers'] = self.data.demand_drivers()
         
         # Need to know the data length to compute variable_cost_mult - to extrapolate the variable
         # cost along the whole time period being modelled. Some NPV discounting could also be
@@ -179,6 +177,9 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         # and read in the json data for generator capacity
         self.load_js(extra_data)
         
+        # and load the data for the demand model
+        self.demand_settings = json.loads(extra_data)['selections']['demand']    
+
         self.is_configured = True
     
     
@@ -268,8 +269,6 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
 
         all_years_out = defaultdict(dict)
 
-        demand_driver = numpy.array(self.data_dict['ts_demand'], dtype=float)
-
         for year in self.config['year_list']:
             
             ### MG - this is a hack - the model should select which year in
@@ -280,7 +279,8 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             ### and the demand model should be selectable by config, tbd
             
             self.data_dict['ts_demand'] = temperaturedemand.calculate_demand(
-                demand_driver, self.demand_data[str(year)], str(year))
+                self.data_dict['demand_drivers'], self.demand_settings[str(year)], str(year), 
+                self.global_conf['timestep_hrs'])
         
             results = self.evaluate_results(self.params[str(year)])
 

@@ -54,10 +54,8 @@ size: 1
 ramp_time_mins: 0
 
 [MissedSupply]
-model: missed_supply.missedsupply.CappedMissedSupply
+model: missed_supply.missedsupply.LinearMissedSupply
 cost_per_mwh: 12500
-reliability_reqt: 0.002
-penalty: 1000
 
 [Data]
 model: data.sample_ge_data.Data
