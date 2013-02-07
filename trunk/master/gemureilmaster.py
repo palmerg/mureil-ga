@@ -256,6 +256,14 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
 # or as a string:
 #                cost_section[generator_type] = '{:.2f}'.format(value)
 
+	    for generator_type, value in results['other']:
+		if value is not None:
+	            if 'reliability' in value:
+		        year_out['reliability'] = value['reliability']
+
+	    if 'reliability' not in year_out:
+		year_out['reliability'] = 100
+
         return all_years_out
         
             
