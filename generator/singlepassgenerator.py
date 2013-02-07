@@ -77,7 +77,19 @@ class SinglePassGeneratorBase(configurablebase.ConfigurableBase):
         """
         return 0
         
+    
+    def get_param_starts(self):
+        """Return two lists - one for min, one max, for starting values for the
+        params. Must be either empty or the same length as param_count.
         
+        Outputs:
+            min_start_list: list of param integers, or []
+            max_start_list: list of param integers, or []
+        """
+    
+        return []
+        
+    
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
         """From the params and remaining demand, update the current values, and calculate
         the output power provided and the total cost.

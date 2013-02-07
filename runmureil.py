@@ -28,6 +28,7 @@ from tools import mureilbuilder, mureilexception
 
 import sys
 import logging
+import signal
 
 logger = logging.getLogger(__name__)
 

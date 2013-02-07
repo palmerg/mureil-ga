@@ -84,6 +84,8 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         param_count = 0
         self.gen_list = {}
         self.gen_params = {}
+        start_values_min = []
+        start_values_max = []
         
         for i in range(len(self.dispatch_order)):
             gen_type = self.dispatch_order[i]
@@ -109,14 +111,26 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             else:
                 self.gen_params[gen_type] = (param_count, 
                     param_count + params_req)
+                (starts_min, starts_max) = gen.get_param_starts()
+                if len(starts_min) == 0:
+                    start_values_min += ((np.ones(params_req) * self.global_config['min_param_val']).tolist())
+                    start_values_max += ((np.ones(params_req) * self.global_config['max_param_val']).tolist())
+                else:
+                    start_values_min += starts_min
+                    start_values_max += starts_max
             param_count += params_req
         
         self.param_count = param_count
+        
+        print start_values_min
+        print start_values_max
         
         # Instantiate the genetic algorithm
         mureilbuilder.check_section_exists(full_config, self.config['algorithm'])
         algorithm_config = full_config[self.config['algorithm']]
         algorithm_config['min_len'] = algorithm_config['max_len'] = param_count
+        algorithm_config['start_values_min'] = start_values_min
+        algorithm_config['start_values_max'] = start_values_max
         algorithm_config['gene_test_callback'] = self.gene_test
         self.algorithm = mureilbuilder.create_instance(full_config, self.global_config,
             self.config['algorithm'], mureilbase.ConfigurableInterface)
