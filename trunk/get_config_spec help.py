@@ -8,7 +8,7 @@
 import os
 import inspect
 import string
-import generator.singlepassgenerator as singlepassgenerator
+from generator import singlepassgenerator
 
 
 def list_modules(directory):

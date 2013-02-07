@@ -23,30 +23,52 @@
 #SOFTWARE.
 #
 #
-"""Implements a Data class that reads in separate netCDF files for
-   wind, solar and demand, on a single pass into an array.
+
+"""Implements a Data class that reads in a list of variables from
+   netCDF files, on a single pass into an array.
 """
 
 import pupynere as nc
 
 from data import datasinglepassbase
+from tools import mureilbuilder
+
+import copy
 
 class Data(datasinglepassbase.DataSinglePassBase):
-    """Read in a single netCDF file for wind, solar and demand.
-       Return as whole arrays, on request.
+    """Read in a list of variables from netCDF files.
     """
 
+    def process_initial_config(self):
+        for ts_name in self.config['ts_list']:
+            self.config_spec += [(ts_name + '_vbl', None, ts_name)]
+            self.config_spec += [(ts_name + '_file', None, None)]
+
+
+    # could optimise by opening the file only once
+    # and need to check that all the required names are here - 
+    # don't want to check them in base set_config above, but
+    # want to use the set_config tricks to convert all the others.
     def complete_configuration(self):
-        """Read the files into memory.
-        """
-        infile = self.config['dir'] + self.config['file']
-        f = nc.NetCDFFile(infile)
         self.data = {}
-        self.data['ts_wind'] = f.variables[self.config['vbl_wind']][:,:]
-        self.data['ts_solar'] = f.variables[self.config['vbl_solar']][:,:]
-        self.data['ts_demand'] = f.variables[self.config['vbl_demand']][:]
-        self.ts_length = self.data['ts_wind'].shape[0]
+
+        for ts_name in self.config['ts_list']:        
+            infile = self.config['dir'] + self.config[ts_name + '_file']
+            
+            f = nc.NetCDFFile(infile)
+            
+            vbl = f.variables[self.config[ts_name + '_vbl']]
+            dims = len(vbl.shape)
+            
+            if (dims == 1):
+                self.data[ts_name] = vbl[:]
+            else:
+                self.data[ts_name] = vbl[:,:]
+
+        self.ts_length = self.data[self.data.keys()[0]].shape[0]
+
         self.is_configured = True
+
         return None
 
 
@@ -57,17 +79,15 @@ class Data(datasinglepassbase.DataSinglePassBase):
 
         Configuration:
         dir: full or relative path to file directory
-        file: filename of netCDF file
-        vbl_wind: variable name within netCDF for wind data. Defaults to ts_wind.
-        vbl_solar: variable name within netCDF for solar data. Defaults to ts_solar.
-        vbl_demand: variable name within netCDF for demand data. Defaults to ts_demand.
+        ts_list: list of names of output ts - e.g. ts_wind, ts_solar
+        
+        then for each name in ts_list, e.g. ts_wind:
+        ts_wind_file: filename of netCDF file with wind data
+        ts_wind_vbl: optional - the name of the variable within the netCDF file. Defaults to 
+            the timeseries name, here ts_wind.
         """
         return [
             ('dir', None, './'),
-            ('file', None, None),
-            ('vbl_wind', None, 'ts_wind'),
-            ('vbl_solar', None, 'ts_solar'),
-            ('vbl_demand', None, 'ts_demand')
+            ('ts_list', mureilbuilder.make_string_list, [])
             ]
-
         

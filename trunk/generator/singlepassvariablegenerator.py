@@ -23,10 +23,11 @@
 #SOFTWARE.
 #
 #
-import tools.mureilbase as mureilbase
+
 import string
 import numpy
-import generator.singlepassgenerator as singlepassgenerator
+
+from generator import singlepassgenerator
 
 class VariableGeneratorBasic(singlepassgenerator.SinglePassGeneratorBase):
     """Implement a basic model for variable generation that uses

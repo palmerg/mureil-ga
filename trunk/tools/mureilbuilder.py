@@ -25,22 +25,42 @@
 #
 """mureilbuilder.py collects functions that build a MUREIL simulation.
 
-   The intended use from the top-level is to call build_master with the command-line flags,
-   which will process any configuration files (identified as -f file), and any command-line
-   overrides, as listed in the read_flags function.
+The intended use from the top-level is to call build_master with the command-line flags,
+which will process any configuration files (identified as -f file), and any command-line
+overrides, as listed in the read_flags function.
 """
 
 import sys, os
 import ConfigParser
 import argparse
-import tools.mureilbase as mureilbase
+from tools import mureilbase, mureilexception
 import importlib
 import logging
-import tools.mureilexception as mureilexception
 import string
 import copy
 
 logger = logging.getLogger(__name__)
+
+
+def build_master(raw_flags, extra_data = None):
+    """Build the simulation master, using the flags from the command line or
+    elsewhere. Intended to be called from runmureil.py or other simple function.
+    An exception of base type MureilException will be raised in case of error.
+    
+    Inputs:
+        raw_flags: flags from command line sys.argv[1:], or a list of strings
+            such as ['-f', 'config.txt']
+        extra_data: arbitrary extra data, if required.
+        
+    Outputs:
+        master: a completely configured simulation master, ready to run.
+    """
+    files, conf_list = read_flags(raw_flags)
+    full_config = accum_config_files(files)
+    master = create_master_instance(full_config, conf_list, extra_data)
+            
+    return master
+
 
 def read_config_file(filename):
     """Take in a filename and parse the file sections to a nested dict object.
@@ -74,14 +94,68 @@ def read_config_file(filename):
     return config
 
 
-def read_flags(flags):
-    args_list = {'iterations': ('Master', 'iterations'), 
-                 'seed': ('algorithm', 'seed'),
-                 'pop_size': ('algorithm', 'pop_size'),
-                 'optim_type': ('Master', 'optim_type'),
-                 'processes': ('algorithm', 'processes'),
-                 'output_file' : ('Master', 'output_file'),
-                 'do_plots' : ('Master', 'do_plots')}
+def read_flags(flags, alt_args_list=None):
+    """Process the command-line flags. 
+    
+    This:
+    1) collects a list of configuration file names
+    2) processes the logging flags, and initialises the logger
+    3) collects the remaining flags which modify the simulation configuration
+
+    Inputs:
+        flags: a list of strings, for example ['-f', 'config.txt'], as would
+            come from sys.argv[1:] as command-line arguments. Further
+            details below.
+        alt_args_list: optional. A dict specifying parameters that modify
+            the configuration extracted from the files. A default is provided.
+            Further details below.
+            
+    Outputs:
+        files: a list of configuration filenames
+        conf_list: a list of tuples of format ((section, param_name), param_value)
+            as extracted from the flags using the args list.
+
+    Details on flags:
+        -f filename or --file filename: filename of a configuration file. Any number
+            of these can be specified and will be applied in order of listing.
+
+        Logging: see do_logger_setup below for more details.
+        -l filename or --logfile filename: filename of the logfile.
+        -d level or --debuglevel level: set the debuglevel. 
+        --logmodulenames: if set (no value needed), log extra information.
+        
+        Default extra arguments:
+        --iterations number: Set the number of iterations
+        --seed number: Set the random seed for the simulation.
+        --pop_size number: Set the population size, if a genetic algorithm.
+        --processes number: Number of processes to spawn for parallel processing
+        --output_file filename: Name of file to write output to
+        --do_plots {True|False}: Draw pretty pictures when done
+    
+    Details on alt_args_list format:
+        args_list is a dict.
+         The key is the command line argument. At the command line, type
+         --name value, e.g. --iterations 10
+         The value is a tuple identifying where in the configuration to find the
+         parameter to be modified, format (object, param_name).
+         object is 'Master' for the master, or the name in the first position in
+         the corresponding tuple in the master's get_config_spec for the others, 
+         for example 'algorithm' (note not 'Algorithm'). 
+         The param_name is the name of the parameter to modify as listed in the 
+         object's get_config_spec function.
+    """
+
+    if alt_args_list:
+        args_list = alt_args_list
+    else:
+        # See notes in docstring for function about args_list format
+        args_list = {'iterations': ('Master', 'iterations'), 
+                     'seed': ('algorithm', 'seed'),
+                     'pop_size': ('algorithm', 'pop_size'),
+                     'optim_type': ('Master', 'optim_type'),
+                     'processes': ('algorithm', 'processes'),
+                     'output_file' : ('Master', 'output_file'),
+                     'do_plots' : ('Master', 'do_plots')}
                  
     parser = argparse.ArgumentParser()
     
@@ -108,6 +182,8 @@ def read_flags(flags):
     
     conf_list = []
     
+    # Build up a list of ((section, param_name), value) tuples to 
+    # describe the modifications to the configuration.
     for item in dict_args.keys():
         val = dict_args[item]
         if val is not None:
@@ -117,196 +193,20 @@ def read_flags(flags):
     return files, conf_list
 
 
-def accum_config_files(files):
-    config = {}
-    for conf_file in files:
-        next_conf = read_config_file(conf_file)
-        for section in next_conf.items():
-            if section[0] in config:
-                config[section[0]].update(section[1])
-            else:
-                config[section[0]] = section[1]
-
-    return config
-    
-
-def apply_flags(full_config, flags):
-    for flag in flags:
-        pair, value = flag
-        section, param = pair
-        
-        if (section == 'Master'):
-            if param in full_config['Master']:
-                full_config['Master'][param] = value
-            else:
-                msg = ('Flag ' + flag + ' alters parameter ' + param + 
-                    ' in Master, but this parameter does not exist') 
-                logging.error(msg)
-                raise mureilexception.ConfigException(msg, __name__ + '.apply_flags', {})
-        else:
-            if section in full_config['Master']:
-                sect_name = full_config['Master'][section]
-                if param in full_config[sect_name]:
-                    full_config[sect_name][param] = value
-                else:
-                    msg = 'Flag ' + str(flag) + ' alters parameter ' + str(param) + ' in ' + str(section) + ', but this parameter does not exist' 
-                    logging.error(msg)
-                    raise mureilexception.ConfigException(msg, __name__ + '.apply_flags', {})
-
-    
-def check_subclass(class_instance, subclass, caller):
-    if not issubclass(class_instance.__class__, subclass):
-        msg = 'in ' + caller + ' ' + class_instance.__class__.__name__ + ' does not implement ' + subclass.__name__
-        logging.critical(msg)
-        raise(mureilexception.ClassTypeException(msg, caller, 
-            class_instance.__class__.__name__, subclass.__name__, {}))
-
-
-def create_instance(config, section_name, subclass):
-    model_name = config['model']
-    parts = model_name.split('.')
-    module_name = string.join(parts[0:-1], '.')
-    class_name = parts[-1]
-
-    try:
-        module = importlib.import_module(module_name)
-        class_instance = getattr(module, class_name)()
-    except TypeError as me:
-        msg = 'Object (' + module_name + ', ' + class_name + '), requested in section ' + section_name + ' does not fully implement its subclasses'
-        logger.critical(msg, exc_info=me)
-        raise mureilexception.ConfigException(msg, __name__, {})
-    except (ImportError, AttributeError, NameError) as me:
-        msg = 'Object (' + module_name + ', ' + class_name + '), requested in section ' + section_name + ' could not be loaded.'
-        logger.critical(msg, exc_info=me)
-        raise mureilexception.ConfigException(msg, __name__, {})
-
-    check_subclass(class_instance, subclass, __name__ + '.create_instance')
-
-    config['section'] = section_name
-    class_instance.set_config(config)
-    return class_instance
-    
-    
-def create_master_instance(full_config, flags, extra_data):
-    model_name = full_config['Master']['model']
-    parts = model_name.split('.')
-    module_name = string.join(parts[0:-1], '.')
-    class_name = parts[-1]
-    
-    try:
-        module = importlib.import_module(module_name)
-        class_instance = getattr(module, class_name)()
-    except TypeError as me:
-        msg = 'Requested Master of module: ' + module_name + ', class: ' + class_name + ' does not fully implement its subclasses'
-        logger.critical(msg, exc_info=me)
-        raise mureilexception.ConfigException(msg, __name__, {})
-    except (ImportError, AttributeError, NameError) as me:
-        msg = 'Requested Master of module: ' + module_name + ', class: ' + class_name + ' could not be loaded.'
-        logger.critical(msg, exc_info=me)
-        raise mureilexception.ConfigException(msg, __name__, {})
-        
-    check_subclass(class_instance, mureilbase.MasterInterface, __name__ + '.create_master_instance')
-
-    full_config['flags'] = flags
-    full_config['extra_data'] = extra_data
-    class_instance.set_config(full_config)
-    
-    return class_instance
-
-
-def build_master(raw_flags, extra_data = None):
-    files, conf_list = read_flags(raw_flags)
-    full_config = accum_config_files(files)
-    master = create_master_instance(full_config, conf_list, extra_data)
-            
-    return master
-
-
-
-def collect_defaults(config_spec):
-    new_config = {}
-    for config_tup in filter(lambda t: t[2] is not None, config_spec):
-        new_config[config_tup[0]] = config_tup[2]
-    return new_config
-    
-
-def apply_conversions(config, config_spec):
-    # Apply conversions, in second position in tuple
-    for config_tup in filter(lambda t: t[1] is not None, config_spec):
-        if config_tup[0] in config:
-            old_val = config[config_tup[0]]
-            config[config_tup[0]] = config_tup[1](old_val)
-
-
-def check_required_params(config, config_spec, class_name):
-    for config_tup in config_spec:
-        if config_tup[0] not in config:
-            if config_tup[0] not in ['model', 'section']:
-                msg = (class_name + ' requires parameter ' + config_tup[0] + 
-                    ' but it is not provided in section ' + config['section'])
-                logging.critical(msg)
-                raise mureilexception.ConfigException(msg, __name__ + '.check_required_params', {})
-
-
-def check_for_extras(config, config_spec, class_name):
-    for config_item in config:
-        if config_item not in ['model', 'section']:
-            if filter(lambda t: t[0] == config_item, config_spec) == []:
-                logging.warning(class_name + ' not expecting parameter ' + config_item +
-                    ' in section ' + config['section'])
-
-
-def check_all_globals_present(config, required, class_name):
-    for param in required:
-        if param not in config:
-            msg = (class_name + ' requires parameter ' + param + ' in global section')
-            logging.critical(msg)
-            raise mureilexception.ConfigException(msg, __name__ + '.check_all_globals_present', {})
-
-
-def check_section_exists(full_config, src, section):
-    if section not in full_config:
-        msg = ('Section ' + section + ' required in config, as specified in Master')
-        logger.critical(msg)
-        raise mureilexception.ConfigException(msg, src, {})
-
-            
-
-def make_string_list(val):
-    """Check if the item is a string, and if so, apply str.split() to make a list of
-    strings. If it's a list of strings, return as is. This allows configuration parameters
-    such as dispatch_order to be initialised from a string or from a config pickle.
-    """
-    if isinstance(val, str):
-        return str.split(val)
-    else:
-        return val
-
-
-def make_int_list(val):
-    """Check if the item is a string, and if so, apply str.split() to make a list of
-    ints. If it's a list of ints, return as is. This allows configuration parameters
-    such as dispatch_order to be initialised from a string or from a config pickle.
-    """
-    if isinstance(val, str):
-        return map(int, str.split(val))
-    else:
-        return val
-
-
-def string_to_bool(val):
-    """Convert 'False' to False and 'True' to True and everything else to 'False'
-    """
-    return (val == 'True')
-        
-
-def update_with_globals(new_config, global_conf, config_spec):
-    for tup in config_spec:
-        if tup[0] in global_conf:
-            new_config[tup[0]] = global_conf[tup[0]]
-
-
 def do_logger_setup(logger_config):
+    """Set up the simulation logger.
+    
+    Inputs:
+        logger_config: a dict with members (all optional) of:
+            debuglevel: the Python logging level - defaults to INFO. One of
+                DEBUG, INFO, WARNING, ERROR, CRITICAL.
+            logmodulenames: if True, log the name of the module that the log
+                message is sourced from.
+            logfile: the full path of the log file.
+            
+    Outputs:
+        None
+    """
 
     for arg in ['debuglevel', 'logmodulenames', 'logfile']:
         if arg not in logger_config:
@@ -345,10 +245,396 @@ def do_logger_setup(logger_config):
     handler.setFormatter(formatter)
     root.addHandler(handler) 
     root.setLevel(numeric_level)
- 
- 
-def unittest_path_setup(self, thisfile):
-    test_dir = os.path.dirname(os.path.realpath(thisfile)) 
-    self.cwd = os.getcwd()
-    os.chdir(test_dir)
-    do_logger_setup({})
+
+
+def accum_config_files(files):
+    """Build a configuration structure from the list of files provided.
+
+    Inputs:
+        files: a list of string filenames, which are applied in turn, with the
+            later files overwriting parameters already present.
+        
+    Outputs:
+        config: a nested dict, with each section, identified by the [section_name]
+            in the file, and each section a dict of parameter : value, where
+            each value is a string.
+    
+    File format example (shortened - see each module's documentation and
+        get_config_spec function for details of parameters):
+
+    [Master]
+    model: master.simplemureilmaster.SimpleMureilMaster
+    iterations: 1000
+    algorithm: Algorithm
+    
+    [Algorithm]
+    model: algorithm.geneticalgorithm.Engine
+    base_mute: 0.01
+    processes: 0
+    seed: 12345
+    
+    and the resulting output:
+    config = {'Master': {'model': 'master.simplemureilmaster.SimpleMureilMaster',
+        'iterations': '1000', 'algorithm': 'Algorithm'}, 'Algorithm': {'model':
+        'algorithm.geneticalgorithm.Engine', 'base_mute': '0.01', 'processes': '0',
+        'seed': '12345'}}
+    """
+    
+    config = {}
+    for conf_file in files:
+        next_conf = read_config_file(conf_file)
+        for section in next_conf.items():
+            if section[0] in config:
+                config[section[0]].update(section[1])
+            else:
+                config[section[0]] = section[1]
+
+    return config
+    
+
+def apply_flags(full_config, flags):
+    """Apply the modifiers are defined in the flags to the specified parameters within
+    the full_config structure.
+    
+    Inputs:
+        full_config: a nested dict - see accum_config_files above.
+        flags: the conf_list output of read_flags above. Format is list of
+            ((section, param_name), value)
+            
+    Outputs:
+        None. full_config is modified in-place.
+    """
+    
+    for flag in flags:
+        pair, value = flag
+        section, param = pair
+        
+        if (section == 'Master'):
+            if param in full_config['Master']:
+                full_config['Master'][param] = value
+            else:
+                msg = ('Flag ' + flag + ' alters parameter ' + param + 
+                    ' in Master, but this parameter does not exist') 
+                logging.error(msg)
+                raise mureilexception.ConfigException(msg, {})
+        else:
+            if section in full_config['Master']:
+                sect_name = full_config['Master'][section]
+                if param in full_config[sect_name]:
+                    full_config[sect_name][param] = value
+                else:
+                    msg = ('Flag ' + str(flag) + ' alters parameter ' + 
+                        str(param) + ' in ' + str(section) + 
+                        ', but this parameter does not exist')
+                    logging.error(msg)
+                    raise mureilexception.ConfigException(msg, {})
+            else:
+                msg = ('Flag ' + str(flag) + ' alters parameter ' +
+                    str(param) + ' in ' + str(section) + 
+                    ', but this section does not exist')
+                logging.error(msg)
+                raise mureilexception.ConfigException(msg, {})
+
+    
+def check_subclass(class_instance, baseclass):
+    """Check if the class instance provided is a subclass of the 
+    base class provided. 
+    
+    Inputs:
+        class_instance: a constructed class object
+        baseclass: a class object
+
+    Ouputs:
+        None. Raises ClassTypeException if it fails.
+    """
+
+    if not issubclass(class_instance.__class__, baseclass):
+        msg = ('in ' + mureilexception.find_caller() + ' ' + 
+            class_instance.__class__.__name__ + 
+            ' does not implement ' + baseclass.__name__)
+        logging.critical(msg)
+        raise(mureilexception.ClassTypeException(msg,  
+            class_instance.__class__.__name__, baseclass.__name__, {}))
+
+
+def create_instance(full_config, global_config, section_name, baseclass):
+    """Create an instance of a model object, using section_name in the 
+    full_config. Check that it is a subclass of the specified baseclass.
+    Set the configuration of the object.
+    
+    Inputs:
+        full_config: the configuration structure - a nested dict as
+            {section_name: {param: value, ...}, ...}
+        global_config: a dict of {param: value, ...} to be applied as global
+            parameter variables.
+        section_name: a string naming the section describing the object to 
+            create. section_name must exist in full_config.
+        baseclass: the class object of a required baseclass, e.g.
+            mureilbase.ConfigurableInterface
+
+    Outputs:
+        class_instance: the constructed and configured model object
+        
+    Exceptions:
+        the mureilexception.ConfigException will be raised if any problem,
+            with the full stack-dump to the logfile.
+    """
+    check_section_exists(full_config, section_name)
+    config = full_config[section_name]
+
+    # Split the model name into module and class
+    model_name = config['model']
+    parts = model_name.split('.')
+    module_name = string.join(parts[0:-1], '.')
+    class_name = parts[-1]
+
+    try:
+        # Instantiate the model
+        module = importlib.import_module(module_name)
+        class_instance = getattr(module, class_name)()
+    except TypeError as me:
+        msg = ('Object (' + module_name + ', ' + class_name + 
+            '), requested in section ' + section_name + 
+            ' does not fully implement its subclasses')
+        logger.critical(msg, exc_info=me)
+        raise mureilexception.ConfigException(msg, {})
+    except (ImportError, AttributeError, NameError) as me:
+        msg = ('Object (' + module_name + ', ' + class_name + 
+            '), requested in section ' + section_name + 
+            ' could not be loaded.')
+        logger.critical(msg, exc_info=me)
+        raise mureilexception.ConfigException(msg, {})
+
+    check_subclass(class_instance, baseclass)
+
+    # Initialise the model
+    config['section'] = section_name
+    class_instance.set_config(config, global_config)
+
+    return class_instance
+    
+    
+def create_master_instance(full_config, flags, extra_data):
+    """Create an instance of the simulation master object.
+    Set the configuration of the object.
+    
+    Inputs:
+        full_config: the configuration structure - a nested dict as
+            {section_name: {param: value, ...}, ...}
+        flags: the conf_list output of read_flags above. Format is list of
+            ((section, param_name), value)
+        extra_data: arbitrary extra data to pass through to master's set_config(),
+            if required
+
+    Outputs:
+        class_instance: the constructed and configured master object
+        
+    Exceptions:
+        the mureilexception.ConfigException will be raised if any problem,
+            with the full stack-dump to the logfile.
+    """
+
+    # Split the model name into module and class
+    model_name = full_config['Master']['model']
+    parts = model_name.split('.')
+    module_name = string.join(parts[0:-1], '.')
+    class_name = parts[-1]
+    
+    try:
+        # Instantiate the model
+        module = importlib.import_module(module_name)
+        class_instance = getattr(module, class_name)()
+    except TypeError as me:
+        msg = ('Requested Master of module: ' + module_name + ', class: ' + 
+            class_name + ' does not fully implement its subclasses')
+        logger.critical(msg, exc_info=me)
+        raise mureilexception.ConfigException(msg, {})
+    except (ImportError, AttributeError, NameError) as me:
+        msg = ('Requested Master of module: ' + module_name + ', class: ' + 
+            class_name + ' could not be loaded.')
+        logger.critical(msg, exc_info=me)
+        raise mureilexception.ConfigException(msg, {})
+        
+    # The master is required to conform to mureilbase.MasterInterface
+    check_subclass(class_instance, mureilbase.MasterInterface)
+
+    # Now apply the flags
+    
+    # Apply defaults and then new config values in the full_config, so that
+    # all the flags will have somewhere to map to. (Main consideration here
+    # is that the 'algorithm' parameter is optional, defaulting to 'Algorithm').
+    config_spec = class_instance.get_config_spec()
+    new_config = collect_defaults(config_spec)
+    new_config.update(full_config['Master'])
+    new_config['section'] = 'Master'
+    full_config['Master'] = new_config
+    apply_flags(full_config, flags)
+    
+    # Now intialise the master
+    class_instance.set_config(full_config, extra_data)
+    
+    return class_instance
+
+
+def collect_defaults(config_spec):
+    """Extract the default values from config_spec as a dict of param_name:value.
+
+    Inputs:
+        config_spec: list of tuples of format (param_name, conversion_function, default),
+            where default = None means no default.
+        
+    Outputs:
+        defaults: dict of param_name:default_value, only where a default was specified.
+    """
+
+    defaults = {}
+    for config_tup in filter(lambda t: t[2] is not None, config_spec):
+        defaults[config_tup[0]] = config_tup[2]
+    return defaults
+    
+
+def apply_conversions(config, config_spec):
+    """Apply the conversion functions listed in config_spec to the config dict, in-place.
+    
+    Inputs:
+        config: dict of param_name:value, where value may be a string.
+        config_spec: list of tuples of format (param_name, conversion_function, default),
+            where conversion_function is any function taking one parameter, including
+            type-conversion functions.
+        
+    Outputs:
+        None. config is modified in-place.
+    """
+    
+    for config_tup in filter(lambda t: t[1] is not None, config_spec):
+        if config_tup[0] in config:
+            old_val = config[config_tup[0]]
+            config[config_tup[0]] = config_tup[1](old_val)
+
+
+def check_required_params(config, config_spec):
+    """Check that all of the parameters listed in config_spec are provided in config.
+    
+    Inputs:
+        config: dict of param_name:value, where value may be a string.
+        config_spec: list of tuples of format (param_name, conversion_function, default),
+
+    Outputs:
+        None, but raises as ConfigException if a problem is found.
+    """
+    
+    for config_tup in config_spec:
+        if config_tup[0] not in config:
+            msg = (config['model'] + ' requires parameter ' + config_tup[0] + 
+                ' but it is not provided in section ' + config['section'])
+            logging.critical(msg)
+            raise mureilexception.ConfigException(msg, {})
+
+
+def check_for_extras(config, config_spec):
+    """Check that there aren't any extra parameters, not listed in config_spec,
+    in config.
+    
+    Inputs:
+        config: dict of param_name:value, where value may be a string.
+        config_spec: list of tuples of format (param_name, conversion_function, default),
+
+    Outputs:
+        None, but raises as ConfigException if a problem is found.
+    """
+    for config_item in config:
+        if config_item not in ['model', 'section']:
+            if filter(lambda t: t[0] == config_item, config_spec) == []:
+                logging.warning(config['model'] + ' not expecting parameter ' + 
+                    config_item + ' in section ' + config['section'])
+
+
+def check_section_exists(full_config, section):
+    """Check that section exists in full_config, and raise an exception if not.
+    
+    Inputs:
+        full_config: the configuration structure - a nested dict as
+            {section_name: {param: value, ...}, ...}
+        section: the string section name
+        
+    Outputs:
+        None, but raises ConfigException if a problem.
+    """
+
+    if section not in full_config:
+        msg = ('Section ' + section + ' required in config, as specified in Master')
+        logger.critical(msg)
+        raise mureilexception.ConfigException(msg, {})
+
+            
+def update_with_globals(new_config, global_conf, config_spec):
+    """Update the new_config with parameters in config_spec that are found in
+    global_conf. Overwrites existing parameter values in new_config.
+    
+    Inputs:
+        new_config: a dict of {param_name:value, ...}, may be empty.
+        global_conf: a dict of {param_name:value, ...}, may be empty.
+        config_spec: list of tuples of format (param_name, conversion_function, default)
+        
+    Outputs:
+        None. new_config is modified in-place.
+    """
+    for tup in config_spec:
+        if tup[0] in global_conf:
+            new_config[tup[0]] = global_conf[tup[0]]
+
+
+def make_string_list(val):
+    """Check if the item is a string, and if so, apply str.split() to make a list of
+    strings. If it's a list of strings, return as is. 
+    
+    Used as a conversion function for apply_conversions above.
+    
+    Inputs:
+        val: value, either string or list of strings
+        
+    Outputs:
+        list of strings
+
+    This allows configuration parameters such as dispatch_order to be initialised 
+    from a string or from a config pickle.
+    """
+    if isinstance(val, str):
+        return str.split(val)
+    else:
+        return val
+
+
+def make_int_list(val):
+    """Check if the item is a string, and if so, apply str.split() to make a list of
+    ints. If it's a list of ints, return as is. 
+    
+    Used as a conversion function for apply_conversions above.
+
+    Inputs:
+        val: value, either string or list of ints
+        
+    Outputs:
+        list of ints
+
+    This allows configuration parameters such as dispatch_order to be initialised from 
+    a string or from a config pickle.
+    """
+    if isinstance(val, str):
+        return map(int, str.split(val))
+    else:
+        return val
+
+
+def string_to_bool(val):
+    """Convert 'False' to False and 'True' to True and everything else to 'False'
+    
+    Used as a conversion function for apply_conversions above.
+    
+    Inputs:
+        val: either 'True' or 'False'
+        
+    Outputs:
+        boolean
+    """
+    return (val == 'True')

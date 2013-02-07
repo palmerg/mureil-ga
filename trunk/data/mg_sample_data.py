@@ -26,9 +26,19 @@
 # Sample data source file, for Marcelle to play with
 
 import numpy
-import data.datasinglepassbase as datasinglepassbase
+from data import datasinglepassbase
 
 class Data(datasinglepassbase.DataSinglePassBase):
+
+    def complete_configuration(self):
+        self.data = {}
+        self.data['ts_wind'] = self.wind_data()
+        self.data['ts_solar'] = self.solar_data()
+        self.data['ts_demand'] = self.demand_data()
+        self.ts_length = self.data['ts_wind'].shape[0]
+        self.is_configured = True
+
+
     def wind_data(self):
         data = numpy.array([
             [0.14, 0.62, 0.80, 0.33],
@@ -2058,6 +2068,6 @@ class Data(datasinglepassbase.DataSinglePassBase):
             22561,
             21563,
             20909,
-            20173])
+            20173], dtype=float)
 
         return data

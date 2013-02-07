@@ -23,10 +23,11 @@
 #SOFTWARE.
 #
 #
+
 """Module with base class for single-pass generator objects.
 """
 
-import tools.configurablebase as configurablebase
+from tools import configurablebase
 
 class SinglePassGeneratorBase(configurablebase.ConfigurableBase):
     """The base class for generic generators that calculate the
@@ -42,10 +43,6 @@ class SinglePassGeneratorBase(configurablebase.ConfigurableBase):
         self.data = {}
         self.saved = {'capacity': None, 'output': None, 'cost': None, 'other': None}
         
-
-    def set_config(self, config):
-        configurablebase.ConfigurableBase.set_config(self, config)
-
 
     def get_data_types(self):
         """Return a list of keys for each type of

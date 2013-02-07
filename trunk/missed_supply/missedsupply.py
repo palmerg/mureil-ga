@@ -23,7 +23,9 @@
 #SOFTWARE.
 #
 #
-import generator.singlepassgenerator as singlepassgenerator
+
+from generator import singlepassgenerator
+
 import numpy
 
 class LinearMissedSupply(singlepassgenerator.SinglePassGeneratorBase):

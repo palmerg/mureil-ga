@@ -23,25 +23,32 @@
 #SOFTWARE.
 #
 #
+"""Functions for use in testbench operation.
+"""
 
-from tools import mureilbase, configurablebase, mureilexception
+import os
+from tools import mureilbuilder
 
-class DataSinglePassBase(configurablebase.ConfigurableBase, 
-    mureilbase.DataSinglePassInterface):
-
-    def get_timeseries(self, ts_name):
-        try:
-            return self.data[ts_name]
-        except:
-            msg = 'Timeseries ' + str(ts_name) + ' requested, but not available.'
-            raise mureilexception.ConfigException(msg, __file__, {})
-            
-    def get_ts_length(self):
-        try:
-            return self.ts_length
-        except:
-            msg = 'Data ts length requested, but ts_length not available'
-            raise mureilexception.ConfigException(msg, __file__, {})
-
-    pass
+def unittest_path_setup(self, thisfile):
+    """Set up all the paths to run the unit tests. Required when using
+    unittest discover.
     
+    Determines the directory the test itself is in, and the
+    directory it is being called from. Changes into the test directory
+    to run the test. Sets the cwd variable in self to the working directory.
+    
+    Also resets the logger functionality, sending output to stdout.
+    
+    Inputs:
+        self: the unittest.TestCase object calling this function
+            (specific object type is irrelevant - just needs to be an object)
+        thisfile: the __file__ value for the test module
+    
+    Outputs:
+        None
+    """
+    
+    test_dir = os.path.dirname(os.path.realpath(thisfile)) 
+    self.cwd = os.getcwd()
+    os.chdir(test_dir)
+    mureilbuilder.do_logger_setup({})

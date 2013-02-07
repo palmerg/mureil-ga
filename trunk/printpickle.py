@@ -23,7 +23,8 @@
 #SOFTWARE.
 #
 #
-import tools.mureiloutput as mureiloutput
+
+from tools import mureiloutput
 import sys
 
 if __name__ == '__main__':

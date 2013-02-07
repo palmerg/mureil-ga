@@ -34,7 +34,7 @@ class ConfigurableInterface(object):
         pass
         
     @abc.abstractmethod
-    def set_config(self, config):
+    def set_config(self, config, global_config=None):
         pass
     
     @abc.abstractmethod
@@ -64,14 +64,10 @@ class MasterInterface(ConfigurableInterface):
 class DataSinglePassInterface(ConfigurableInterface):
 
     @abc.abstractmethod
-    def wind_data(self):
+    def get_timeseries(self, ts_name):
         pass
 
     @abc.abstractmethod
-    def solar_data(self):
-        pass
-
-    @abc.abstractmethod
-    def demand_data(self):
+    def get_ts_length(self):
         pass
 

@@ -8,7 +8,7 @@ wind: Wind
 hydro: Hydro
 fossil: Fossil
 missed_supply: MissedSupply
-data: Data
+data: Data_New
 global: Global
 optim_type: missed_supply
 iterations: 100
@@ -77,3 +77,12 @@ cost_per_mwh: 0.005
 
 [Data]
 model: rhuva_data1.Data
+
+[Data_New]
+model: data.ncdata.Data
+ts_list: ts_wind ts_solar ts_demand
+ts_wind_file: CoV_wind_station_output_prox_penalty.nc
+ts_wind_vbl: CoV_wind
+ts_solar_file: CoV_dsr_station_output_prox_penalty.nc
+ts_solar_vbl: CoV_dsr
+ts_demand_file: Aus_demand_sample_raw.nc

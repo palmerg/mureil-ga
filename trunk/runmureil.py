@@ -23,8 +23,9 @@
 #SOFTWARE.
 #
 #
-import tools.mureilbuilder as mureilbuilder
-import tools.mureilexception as mureilexception
+
+from tools import mureilbuilder, mureilexception
+
 import sys
 import logging
 

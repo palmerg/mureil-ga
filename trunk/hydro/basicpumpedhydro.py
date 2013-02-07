@@ -26,11 +26,11 @@
 """Implements the BasicPumpedHydro class
 """
 
-import tools.mureilbase as mureilbase
 import numpy as np
-import generator.singlepassgenerator as singlepassgenerator
-import tools.mureilexception as mureilexception
 import logging
+
+from tools import mureilexception
+from generator import singlepassgenerator
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +40,13 @@ class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
        and always releases when excess demand exists.
     """
 
-    def set_config(self, config):
-        singlepassgenerator.SinglePassGeneratorBase.set_config(self, config)
-        
+    def complete_configuration(self):
         # Check the pump_round_trip is <= 1
         if self.config['pump_round_trip'] > 1:
             msg = ('BasicPumpedHydro requires pump_round_trip to be less than 1. ' +
                 ' Value = {:.3f}'.format(self.config['pump_round_trip']))
             logger.critical(msg) 
-            raise mureilexception.ConfigException(msg, 
-                'BasicPumpedHydro.set_config', {})
+            raise mureilexception.ConfigException(msg, {})
 
         # Pre-calculate these for improved speed
         # Instead of calculating explicitly the water that's pumped up, calculate
@@ -61,6 +58,7 @@ class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
         self.elec_cap = (1 / self.config['timestep_hrs']) * (
             float(self.config['dam_capacity']) / float(self.config['water_factor']))
         self.pump_round_trip_recip = 1 / self.config['pump_round_trip']
+        self.is_configured = True
 
 
     def get_config_spec(self):
