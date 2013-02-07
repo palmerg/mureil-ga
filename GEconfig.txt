@@ -8,10 +8,10 @@ solar: Solar
 wind: Wind
 coal: Coal_instant
 gas: Gas
-#missed_supply: MissedSupply
+missed_supply: MissedSupply
 data: Data
-#dispatch_order: solar wind coal gas missed_supply
-dispatch_order: solar wind coal gas
+dispatch_order: solar wind coal gas missed_supply
+#dispatch_order: solar wind coal gas
 do_plots: False
 year_list: 2010 2020 2030 2040 2050
 
@@ -60,8 +60,8 @@ carbon_intensity: 1.0
 size: 1
 
 [MissedSupply]
-model: missed_supply.missedsupply.LinearMissedSupply
-cost_per_mwh: 12500
+model: missed_supply.missedsupply.TimestepReliabilityMissedSupply
+cost_per_mwh: 0
 
 [Data]
 model: data.sample_ge_data.Data
