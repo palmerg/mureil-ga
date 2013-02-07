@@ -6,11 +6,12 @@ global: Global
 output_file: mureil_GE.json
 solar: Solar
 wind: Wind
-coal: Coal
+coal: Coal_instant
 gas: Gas
-missed_supply: MissedSupply
+#missed_supply: MissedSupply
 data: Data
-dispatch_order: solar wind coal gas missed_supply
+#dispatch_order: solar wind coal gas missed_supply
+dispatch_order: solar wind coal gas
 do_plots: False
 year_list: 2010 2020 2030 2040 2050
 
@@ -22,18 +23,16 @@ time_period_yrs: 10
 carbon_price: 25
 
 [Solar]
-model: generator.singlepassvariablegenerator.VariableGeneratorLinearInstall
-capex: 1.0
+model: generator.singlepassvariablegenerator.VariableGeneratorBasic
+capex: 2.0
 size: 1
-install: 1000
-type: Solar_Thermal
+type: Solar
 data_type: ts_solar
 
 [Wind]
-model: generator.singlepassvariablegenerator.VariableGeneratorLinearInstall
+model: generator.singlepassvariablegenerator.VariableGeneratorBasic
 capex: 1.2
 size: 1
-install: 500
 type: Wind
 data_type: ts_wind
 
@@ -52,6 +51,13 @@ carbon_intensity: 1.0
 type: coal
 size: 1
 ramp_time_mins: 0
+
+[Coal_instant]
+model: thermal.instantthermal.InstantOptimisableThermal
+capex: 2.0
+fuel_price_mwh: 10
+carbon_intensity: 1.0
+size: 1
 
 [MissedSupply]
 model: missed_supply.missedsupply.LinearMissedSupply
