@@ -32,7 +32,7 @@ import data.datasinglepassbase as datasinglepassbase
 class Data(datasinglepassbase.DataSinglePassBase):
     def set_config(self, config):
         datasinglepassbase.DataSinglePassBase.set_config(self, config)
-        dir = '../access_2month_optim/'
+        dir = '/export/karoly2/rhuva/phd/ACCESS/muriel/access_2month_optim/'
         file = 'CoV_wind_station_output_prox_penalty.nc' #file with _II has smaller exclusion zone
         infile = dir + file
         f = nc.NetCDFFile(infile)
