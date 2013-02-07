@@ -47,12 +47,16 @@ class VariableGeneratorBasic(singlepassgenerator.SinglePassGeneratorBase):
             type - a string name for the type of generator modelled
             data_type - a string key for the data required from the master for
                 the set_data method.
+            start_min_param - the minimum starting param value
+            start_max_param - the maximum starting param value
         """
         return [
             ('capex', float, None),
             ('size', float, None),
             ('type', None, None),
-            ('data_type', None, None)
+            ('data_type', None, None),
+            ('start_min_param', int, 1e20),
+            ('start_max_param', int, 1e20)
             ]
 
     
@@ -92,6 +96,18 @@ class VariableGeneratorBasic(singlepassgenerator.SinglePassGeneratorBase):
         ## TODO - check that this is set up
         return self.ts_cap_fac.shape[1] 
         
+        
+    def get_param_starts(self):
+        list_len = self.get_param_count()
+        if list_len > 0:
+            if (self.config['start_min_param'] == 1e20):
+                return [], []
+            else:
+                return ((numpy.ones(list_len) * self.config['start_min_param']).tolist(),
+                    (numpy.ones(list_len) * self.config['start_max_param']).tolist())
+        else:
+            return [], []
+            
         
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
         """From the params and remaining demand, update the current values, and calculate

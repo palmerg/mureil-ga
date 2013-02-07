@@ -96,6 +96,9 @@ class Engine(configurablebase.ConfigurableBase):
             base_mute: ?
             gene_mute: ?
             gene_test_callback: function handle to calculate cost of gene
+            start_values_min: list of minimum initialisation values for genes.
+                Should be empty, or the same length as min_len.
+            start_values_max: as for start_values_min, but maximum.
         """
         return [
             ('min_param_val', int, None), 
@@ -109,7 +112,9 @@ class Engine(configurablebase.ConfigurableBase):
             ('seed', int, None), 
             ('min_len', int, None), 
             ('max_len', int, None),
-            ('gene_test_callback', None, self.gene_test_undef)
+            ('gene_test_callback', None, self.gene_test_undef),
+            ('start_values_min', None, []),
+            ('start_values_max', None, [])
             ]
 
 
@@ -302,10 +307,10 @@ class Engine(configurablebase.ConfigurableBase):
 
 
 class Value:
-    def __init__(self, min_size, max_size):
+    def __init__(self, min_size, max_size, min_start, max_start):
         self.min_size = min_size
         self.max_size = max_size
-        self.value = self.rand()
+        self.value = random.randint(min_start, max_start)
         return None
     def rand(self):
         """input: None
@@ -328,8 +333,19 @@ class Gene(list):
         self.length = random.randint(self.config['min_len'], self.config['max_len'])
         self.score = None
         self.values = []
+        
+        min_param_val = self.config['min_param_val']
+        max_param_val = self.config['max_param_val']
+        min_starts = self.config['start_values_min']
+        max_starts = self.config['start_values_max']
+        
         for i in range(self.length):
-            self.base = Value(self.config['min_param_val'], self.config['max_param_val'])
+            if not min_starts:
+                self.base = Value(min_param_val, max_param_val,
+                    min_param_val, max_param_val)
+            else:
+                self.base = Value(min_param_val, max_param_val,
+                    min_starts[i], max_starts[i])
             self.values.append(self.base.value)
         return None
     def get_score(self):
@@ -425,6 +441,7 @@ class Pop(list):
             i = co_ord[0]
             j = co_ord[1]
             self.base = Value(self.config['min_param_val'], 
+                self.config['max_param_val'], self.config['min_param_val'],
                 self.config['max_param_val'])
             self.genes[i].values[j] = self.base.value
         for gene_no in freaks:
