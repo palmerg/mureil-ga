@@ -25,23 +25,16 @@
 #
 import numpy
 import time
-
-import tools.mureilbuilder as mureilbuilder
-import tools.configurablebase as configurablebase
-import tools.mureilexception as mureilexception
-import tools.mureiloutput as mureiloutput
-import tools.mureilbase as mureilbase
-
-import generator.singlepassgenerator as singlepassgenerator
 import logging
 import copy
 import json
-
-import demand.temperaturedemand as temperaturedemand
-
 from collections import defaultdict
-
 from os import path
+
+from tools import mureilbuilder, mureilexception, mureiloutput, globalconfig
+from tools import configurablebase, mureilbase
+from generator import singlepassgenerator
+from demand import temperaturedemand
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +47,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         full_conf = {}
         full_conf['Master'] = self.config
         full_conf[self.config['data']] = self.data.get_config()
-        full_conf[self.config['global']] = self.global_conf
+        full_conf[self.config['global']] = self.global_config
 
         for gen_type in self.dispatch_order:
             gen = getattr(self, gen_type)
@@ -63,97 +56,54 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         return full_conf
 
      
-    def set_config(self, full_config):
+    def set_config(self, full_config, extra_data):
     
-        # extract the extra data - in this case the json data
-        # from the full config
-        extra_data = full_config['extra_data']
-        del full_config['extra_data']
+        # Master explicitly does not copy in the global variables. It is too confusing
+        # to combine those with flags, defaults and values defined in the config files.
+        self.load_initial_config(full_config['Master'])
         
-        self.full_config = copy.deepcopy(full_config)
-        config_spec = self.get_config_spec()
+        # Get the global variables
+        mureilbuilder.check_section_exists(full_config, self.config['global'])
+        self.global_config = full_config[self.config['global']]
+        globalconfig.pre_data_global_calcs(self.global_config)
 
-        # Apply defaults and new config values, to be prepared for flags
-        new_config = mureilbuilder.collect_defaults(config_spec)
-        new_config.update(self.full_config['Master'])
-        new_config['section'] = 'Master'
+        # Now check the dispatch_order, to get a list of the generators
+        for gen in self.config['dispatch_order']:
+            self.config_spec += [(gen, None, None)]
 
-        # Put the new_config back into the full_config, so flags can be applied
-        self.full_config['Master'] = new_config
-        mureilbuilder.apply_flags(self.full_config, self.full_config['flags'])
-        del self.full_config['flags']
-        new_config = self.full_config['Master']
-
-        # Apply conversions to config
-        mureilbuilder.apply_conversions(new_config, config_spec)
-
-        # And check that all of the required parameters are there
-        mureilbuilder.check_required_params(new_config, config_spec, self.__class__.__name__)
-
-        # Now check what's happening in dispatch_order, to get a list of the generators
-        for gen in new_config['dispatch_order']:
-            config_spec += [(gen, None, None)]
-
-        # And check again that all of the required parameters are there, including all the
-        # generator details
-        mureilbuilder.check_required_params(new_config, config_spec, self.__class__.__name__)
-
-        # And check that there aren't any extras
-        mureilbuilder.check_for_extras(new_config, config_spec, self.__class__.__name__)
-
-        self.config = new_config
+        self.update_from_config_spec()
+        self.check_config()
+        
         self.dispatch_order = self.config['dispatch_order']
-
-        # And get the global variables
-        mureilbuilder.check_section_exists(self.full_config, __name__, self.config['global'])
-        self.global_conf = self.full_config[self.config['global']]
         
-        # Convert a few of them, and pre-calculate more useful values for some of them
-        global_spec = [('timestep_mins', float, None), ('time_period_yrs', float, None)]
-        mureilbuilder.apply_conversions(self.global_conf, global_spec)
-        
-        if 'timestep_mins' in self.global_conf:
-            self.global_conf['timestep_hrs'] = float(self.global_conf['timestep_mins']) / 60
-        elif 'timestep_hrs' in self.global_conf:
-            self.global_conf['timestep_mins'] = float(self.global_conf['timestep_hrs']) * 60
-       
         # Set up the data class and get the data
-        mureilbuilder.check_section_exists(self.full_config, __name__, self.config['data'])
-        data_config = self.full_config[self.config['data']]
-        data_config['global'] = self.global_conf
-        self.data = mureilbuilder.create_instance(data_config, self.config['data'], mureilbase.DataSinglePassInterface)
+        self.data = mureilbuilder.create_instance(full_config, self.global_config, self.config['data'], 
+            mureilbase.DataSinglePassInterface)
+        self.global_config['data_ts_length'] = self.data.get_ts_length()
+        globalconfig.post_data_global_calcs(self.global_config)
+
+        # TODO ASAP - this only works with the hard-coded file. Make it more
+        # like simplemureilmaster.py.
         self.data_dict = {}
         self.data_dict['ts_wind'] = numpy.array(self.data.wind_data(), dtype=float)
         self.data_dict['ts_solar'] = numpy.array(self.data.solar_data(), dtype=float)
         self.data_dict['ts_demand'] = numpy.array(self.data.demand_data(), dtype=float)
-        
         self.data_dict['demand_drivers'] = self.data.demand_drivers()
-        
-        # Need to know the data length to compute variable_cost_mult - to extrapolate the variable
-        # cost along the whole time period being modelled. Some NPV discounting could also be
-        # incorporated with a discount rate parameter.
-        if 'variable_cost_mult' not in self.global_conf:
-            if 'time_period_yrs' in self.global_conf and 'timestep_hrs' in self.global_conf:
-                data_samples = len(self.data_dict['ts_demand'])
-                yrs_of_data = ((self.global_conf['timestep_hrs'] * float(data_samples)) /
-                    (365.25 * 24))
-                self.global_conf['variable_cost_mult'] = (self.global_conf['time_period_yrs'] /
-                    yrs_of_data)
+        self.global_config['data_ts_length'] = len(self.data_dict['ts_demand'])
+        globalconfig.post_data_global_calcs(self.global_config)
     
         # Instantiate the generator objects, set their data, determine their param requirements
         param_count = 0
+        self.gen_list = {}
+        self.gen_params = {}
+
         for i in range(len(self.dispatch_order)):
             gen_type = self.dispatch_order[i]
-            section = self.config[gen_type]
-
-            mureilbuilder.check_section_exists(self.full_config, __name__, self.config[gen_type])
-            conf_temp = self.full_config[section]
-            conf_temp['global'] = self.global_conf
 
             # Build the generator instances
-            setattr(self, gen_type, mureilbuilder.create_instance(conf_temp, section,
-                singlepassgenerator.SinglePassGeneratorBase))
-            gen = getattr(self, gen_type)
+            gen = mureilbuilder.create_instance(full_config, self.global_config, 
+                self.config[gen_type], singlepassgenerator.SinglePassGeneratorBase)
+            self.gen_list[gen_type] = gen
 
             # Supply data as requested by the generator
             data_req = gen.get_data_types()
@@ -166,10 +116,10 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             # allocate the slots in the params list
             params_req = gen.get_param_count()
             if (params_req == 0):
-                setattr(self, gen_type + '_ptr', (0, 0))
+                self.gen_params[gen_type] = (0, 0)
             else:
-                setattr(self, gen_type + '_ptr', (param_count, 
-                    param_count + params_req))
+                self.gen_params[gen_type] = (param_count, 
+                    param_count + params_req)
             param_count += params_req
         
         self.param_count = param_count
@@ -189,7 +139,6 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             ('global', None, 'Global'),
             ('output_file', None, 'ge.pkl'),
             ('dispatch_order', mureilbuilder.make_string_list, None),
-            ('timestep_mins', int, 60),
             ('do_plots', mureilbuilder.string_to_bool, False),
             ('year_list', mureilbuilder.make_string_list, None)
             ]
@@ -253,7 +202,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             # This code assumes only one param per type, a simplification for the demo.
             this_params = numpy.zeros(4)
             for gen_type in ['coal', 'wind', 'solar', 'gas']:
-                param_ptr = getattr(self, gen_type + '_ptr')
+                param_ptr = self.gen_params[gen_type]
                 if (param_ptr[0] < param_ptr[1]) and (gen_type in gen_list):
                     this_params[param_ptr[0]] = gen_list[gen_type][i]
 
@@ -280,7 +229,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             
             self.data_dict['ts_demand'] = temperaturedemand.calculate_demand(
                 self.data_dict['demand_drivers'], self.demand_settings[str(year)], str(year), 
-                self.global_conf['timestep_hrs'])
+                self.global_config['timestep_hrs'])
         
             results = self.evaluate_results(self.params[str(year)])
 
@@ -296,11 +245,11 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             
             # Total demand, in MWh
             year_out['demand'] = '{:.2f}'.format(
-                numpy.sum(self.data_dict['ts_demand']) * self.global_conf['timestep_hrs'])
+                numpy.sum(self.data_dict['ts_demand']) * self.global_config['timestep_hrs'])
     
             for generator_type, values in results['output']:
                 output_section[generator_type] = '{:.2f}'.format(
-                    sum(values) * self.global_conf['timestep_hrs'])
+                    sum(values) * self.global_config['timestep_hrs'])
     
             for generator_type, value in results['cost']:
                 cost_section[generator_type] = value
@@ -318,8 +267,8 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         cost = 0
 
         for gen_type in self.dispatch_order:
-            gen = getattr(self, gen_type)
-            gen_ptr = getattr(self, gen_type + '_ptr')
+            gen = self.gen_list[gen_type]
+            gen_ptr = self.gen_params[gen_type]
 
             (this_cost, this_ts) = gen.calculate_cost_and_output(
                 params[gen_ptr[0]:gen_ptr[1]], rem_demand, save_result)
@@ -358,7 +307,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         results['other'] = []
         
         for gen_type in self.dispatch_order:
-            gen = getattr(self, gen_type)    
+            gen = self.gen_list[gen_type]
             results['gen_desc'].append((gen_type, gen.interpret_to_string()))
 
             saved_result = gen.get_saved_result()

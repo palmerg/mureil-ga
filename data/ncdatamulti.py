@@ -29,29 +29,33 @@
 
 import pupynere as nc
 
-import data.datasinglepassbase as datasinglepassbase
+from data import datasinglepassbase
 
 class Data(datasinglepassbase.DataSinglePassBase):
     """Read in separate netCDF files for wind, solar and demand.
        Return as whole arrays, on request.
     """
     
-    def set_config(self, config):
-        """Set the config, and read the files into memory.
+    def complete_configuration(self):
+        """Read the files into memory.
         """
-        datasinglepassbase.DataSinglePassBase.set_config(self, config)
+        self.data = {}
+        
         infile = self.config['dir'] + self.config['wind']
         f = nc.NetCDFFile(infile)
-        self.ts_wind = f.variables[self.config['vbl_wind']][:,:]
+        self.data['ts_wind'] = f.variables[self.config['vbl_wind']][:,:]
 
         infile = self.config['dir'] + self.config['solar']
         f = nc.NetCDFFile(infile)
-        self.ts_solar = f.variables[self.config['vbl_solar']][:,:]
+        self.data['ts_solar'] = f.variables[self.config['vbl_solar']][:,:]
 
         infile = self.config['dir'] + self.config['demand']
         f = nc.NetCDFFile(infile)
-        self.ts_demand = f.variables[self.config['vbl_demand']][:]
+        self.data['ts_demand'] = f.variables[self.config['vbl_demand']][:]
         
+        self.ts_length = self.data['ts_wind'].shape[0]
+        self.is_configured = True
+
         return None
 
 

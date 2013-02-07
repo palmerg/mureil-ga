@@ -31,9 +31,10 @@ by mgannon
 Based on GA.py by steven, Jan 7, 2011
 @author: steven
 """
+
+from tools import configurablebase, mureilexception
+
 import random
-import tools.configurablebase as configurablebase
-import tools.mureilexception as mureilexception
 import logging
 import sys
 import copy
@@ -55,14 +56,8 @@ class Engine(configurablebase.ConfigurableBase):
         configurablebase.ConfigurableBase.__init__(self)
         self.mp_active = False
 
-    def set_config(self, config):
-        """Set the configuration of the genetic algorithm, and sets
-        up the starting state.
-        
-        Inputs: config dict - see 'get_config_spec' function for list
-            of parameters.
-        """
-        configurablebase.ConfigurableBase.set_config(self, config)
+
+    def complete_configuration(self):
         self.gene_test = self.config['gene_test_callback']
         
         random.seed(self.config['seed'])
@@ -73,6 +68,15 @@ class Engine(configurablebase.ConfigurableBase):
         self.best_gene_data = []
         self.iteration_count = -1
         self.is_configured = True
+        
+        num = 0
+        sum = 0
+        for gene in self.population.genes:
+            num += 1
+            sum += gene.score
+        logger.debug('average score before: %f', float(sum)/num)
+
+        return None
 
 
     def get_config_spec(self):
@@ -169,9 +173,33 @@ class Engine(configurablebase.ConfigurableBase):
         return self.population
 
         
-    def get_final(self):
+    def get_final(self, log_results=True):
         self.pop_score()
-        return self.population, self.clones_data, self.best_gene_data
+        
+        num = 0
+        sum = 0
+        for gene in self.population.genes:
+            num += 1
+            sum += gene.score
+        optim = [[],-1e1000,-1]
+
+        for data in self.best_gene_data:
+            if data[1] > optim[1]:
+                optim = data
+
+        if log_results:
+            logger.info('best gene was: %s', str(optim[0]))
+            logger.info('on loop %i, with score %f', optim[2], optim[1])
+
+        for data in self.clones_data:
+            if data[1] > optim[1]:
+                optim = data
+        
+        if log_results:
+            logger.debug('%i nuke/s dropped', len(self.clones_data))
+            logger.debug('average score after: %f', float(sum)/num)   
+        
+        return optim[0], self.best_gene_data
 
         
     def do_iteration(self):

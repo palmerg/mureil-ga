@@ -39,14 +39,14 @@ import os
 
 import unittest
 import numpy as np
-import tools.mureilexception as mureilexception
-import tools.mureilbuilder as mureilbuilder
+
+from tools import mureilexception, testutilities
 
 import hydro.basicpumpedhydro
 
 class TestBasicPumpedHydro(unittest.TestCase):
     def setUp(self):
-        mureilbuilder.unittest_path_setup(self, __file__)
+        testutilities.unittest_path_setup(self, __file__)
         self.hydro = hydro.basicpumpedhydro.BasicPumpedHydro()
 
     def tearDown(self):

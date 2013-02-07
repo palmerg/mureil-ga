@@ -39,14 +39,14 @@ import os
 
 import unittest
 import numpy as np
-import tools.mureilexception as mureilexception
-import tools.mureilbuilder as mureilbuilder
+
+from tools import mureilexception, testutilities
 
 import thermal.slowresponsethermal
 
 class TestSlowResponseThermal(unittest.TestCase):
     def setUp(self):
-        mureilbuilder.unittest_path_setup(self, __file__)
+        testutilities.unittest_path_setup(self, __file__)
         self.thermal = thermal.slowresponsethermal.SlowResponseThermal()
 
     def tearDown(self):
@@ -92,7 +92,7 @@ class TestSlowResponseThermal(unittest.TestCase):
 
 class TestSlowResponseThermalFixed(unittest.TestCase):
     def setUp(self):
-        mureilbuilder.unittest_path_setup(self, __file__)
+        testutilities.unittest_path_setup(self, __file__)
         self.thermal = thermal.slowresponsethermal.SlowResponseThermalFixed()
 
     def tearDown(self):

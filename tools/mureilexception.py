@@ -26,6 +26,8 @@
 """Defines exception classes for mureil operations.
 """
 
+import inspect
+
 class MureilException(Exception):
     pass
 
@@ -47,13 +49,11 @@ class ConfigException(MureilException):
     
     Attributes:
         msg -- explanation of the error
-        source -- the file where the exception occurred
         data -- a dict of any useful information to understand the error
     """
     
-    def __init__(self, msg, source, data):
+    def __init__(self, msg, data):
         self.msg = msg
-        self.source = source
         self.data = data
         
 
@@ -63,17 +63,38 @@ class ClassTypeException(MureilException):
     
     Attributes:
         msg -- explanation of the error
-        source -- the file where the exception occurred
         class_name -- the name of the class instantiated
         subclass_name -- the name of the class it should have implemented
         data -- a dict of any useful information to understand the error
     """
     
-    def __init__(self, msg, source, class_name, subclass_name, data):
+    def __init__(self, msg, class_name, subclass_name, data):
         self.msg = msg
-        self.source = source
         self.class_name = class_name
         self.subclass_name = subclass_name
         self.data = data
         
-        
+
+class ArrayDataTypeException(MureilException):   
+    """Exception raised when array tested is not of the required type.
+    
+    Attributes:
+        msg -- explanation of the error
+        data -- a dict of any useful information to understand the error
+    """
+    
+    def __init__(self, msg, data):
+        self.msg = msg
+        self.data = data
+
+
+def find_caller(level):
+    """Return a string with the caller of the function that called
+    find_caller, and the line number of the call. Intended for use
+    with exception calls.
+    
+    Inputs: level - integer - if 0, the caller of find_caller, 
+        if 1, the caller above that
+    """
+    stack_tup = inspect.stack()[level + 1][1:3]
+    return '{:s}:{:d}'.format(stack_tup[0], stack_tup[1])

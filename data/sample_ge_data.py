@@ -27,9 +27,20 @@
 # of wind and solar.
 
 import numpy
-import data.datasinglepassbase as datasinglepassbase
+
+from data import datasinglepassbase
 
 class Data(datasinglepassbase.DataSinglePassBase):
+
+    def complete_configuration(self):
+        self.data = {}
+        self.data['ts_wind'] = self.wind_data()
+        self.data['ts_solar'] = self.solar_data()
+        self.data['ts_demand'] = self.demand_drivers()
+        self.ts_length = self.data['ts_wind'].shape[0]
+        self.is_configured = True
+
+
     def wind_data(self):
         data = numpy.array([
             [0.80],

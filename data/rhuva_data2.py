@@ -27,31 +27,33 @@
 import pupynere as nc
 
 import numpy
-import data.datasinglepassbase as datasinglepassbase
+
+from data import datasinglepassbase
 
 class Data(datasinglepassbase.DataSinglePassBase):
-    def set_config(self, config):
-        datasinglepassbase.DataSinglePassBase.set_config(self, config)
+    def complete_configuration(self):
+        self.data = {}
+        
         dir = '/export/karoly2/Roger/ACCESS-A/'
         file = 'RegGrid_wind_output_11point_gap.nc' #file with _II has smaller exclusion zone
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        ts_wind = f.variables['wind_power'][:,:]
+        self.data['ts_wind'] = f.variables['wind_power'][:,:]
 
         file = 'RegGrid_dsr_output_19point_gap.nc'
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        ts_solar = f.variables['dsr'][:,:]
+        self.data['ts_solar'] = f.variables['dsr'][:,:]
 
         dir='/export/karoly2/rhuva/phd/ACCESS/muriel/access_2month_optim/'
         file = 'Aus_demand_2010_2011.nc'
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        ts_demand = f.variables['ts_demand'][:]
+        self.data['ts_demand'] = f.variables['ts_demand'][:]
         
-        wind_nan = numpy.isnan(ts_wind)
-        solar_nan = numpy.isnan(ts_solar)
-        demand_nan = numpy.isnan(ts_demand)
+        wind_nan = numpy.isnan(self.data['ts_wind'])
+        solar_nan = numpy.isnan(self.data['ts_solar'])
+        demand_nan = numpy.isnan(self.data['ts_demand'])
         
         wind_row = wind_nan.any(1)
         solar_row = solar_nan.any(1)
@@ -59,23 +61,15 @@ class Data(datasinglepassbase.DataSinglePassBase):
         combo = numpy.array([wind_row, solar_row, demand_nan])
         combo_flat = combo.any(0)
         
-        self.ts_wind = ts_wind[combo_flat == False, :]
-        self.ts_solar = ts_solar[combo_flat == False, :]
-        self.ts_demand = ts_demand[combo_flat == False]
+        self.data['ts_wind'] = self.data['ts_wind'][combo_flat == False, :]
+        self.data['ts_solar'] = self.data['ts_solar'][combo_flat == False, :]
+        self.data['ts_demand'] = self.data['ts_demand'][combo_flat == False]
         
-        print self.ts_wind.shape
-        print self.ts_solar.shape
-        print self.ts_demand.shape
+        print self.data['ts_wind'].shape
+        print self.data['ts_solar'].shape
+        print self.data['ts_demand'].shape
+
+        self.ts_length = self.data['ts_wind'].shape[0]
         
         return None
 
-
-    def wind_data(self):
-        return self.ts_wind
-
-    def solar_data(self):
-        return self.ts_solar
-
-    def demand_data(self):
-        return self.ts_demand
-        
