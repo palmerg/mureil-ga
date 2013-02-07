@@ -3,7 +3,7 @@
 [Master]
 model: master.simplemureilmaster.SimpleMureilMaster
 optim_type: missed_supply
-iterations: 10000
+iterations: 100
 output_file: linear_install.pkl
 algorithm: Algorithm
 solar: Solar
@@ -29,7 +29,7 @@ gene_mute: 0.1
 pop_size: 100
 mort: 0.5
 nuke_power: 20
-processes: 2
+processes: 3
 seed: 12345
 
 [Solar]
@@ -44,6 +44,7 @@ data_type: ts_solar
 [Wind]
 model: generator.singlepassvariablegenerator.VariableGeneratorLinearInstall
 capex: 3000
+
 # Size = 0.001 is so that the data in the input wind data converts to
 # the units requred - there was a divide-by-1000 in the 'wind' code.
 # TODO - solve this properly - when all the units are standardisd.
