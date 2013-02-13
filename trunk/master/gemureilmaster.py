@@ -33,7 +33,6 @@ from os import path
 from tools import mureilbuilder, mureilexception, mureiloutput, globalconfig
 from tools import configurablebase, mureilbase
 from generator import singlepassgenerator
-from demand import temperaturedemand
 
 logger = logging.getLogger(__name__)
 
