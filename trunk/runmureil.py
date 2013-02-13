@@ -28,20 +28,21 @@ from tools import mureilbuilder, mureilexception
 
 import sys
 import logging
-import signal
 
 logger = logging.getLogger(__name__)
 
-def runmureil(flags):
+def runmureil(flags, extra_data=None):
     master = None
+    results = None
+    
     try:
-        master = mureilbuilder.build_master(flags)
+        master = mureilbuilder.build_master(flags, extra_data)
     except mureilexception.MureilException as me:
         handle_exception(me)
 
     if master:    
         try:
-            master.run()
+            results = master.run()
         except mureilexception.MureilException as me:
             handle_exception(me)
         except Exception as me:
@@ -49,6 +50,8 @@ def runmureil(flags):
                 exc_info=me)
         finally:
             master.finalise()
+
+    return results
 
 
 def handle_exception(me):

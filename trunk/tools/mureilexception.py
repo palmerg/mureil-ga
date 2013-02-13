@@ -29,7 +29,9 @@
 import inspect
 
 class MureilException(Exception):
-    pass
+    def __str__(self):
+        return self.msg
+
 
 class AlgorithmException(MureilException):
     """Exception raised for errors found while running the algorithm.

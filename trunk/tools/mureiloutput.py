@@ -128,7 +128,7 @@ def plot_timeseries(output, demand):
     pylab.legend()        
     pylab.title('Non-cumulative power')
 
-    pylab.show()
+    pylab.show(False)
 
 
 def plot_pickle(filename):

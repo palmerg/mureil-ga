@@ -29,6 +29,8 @@ import pupynere as nc
 import numpy
 
 from data import datasinglepassbase
+from tools import mureiltypes
+
 
 class Data(datasinglepassbase.DataSinglePassBase):
     def complete_configuration(self):
@@ -39,17 +41,32 @@ class Data(datasinglepassbase.DataSinglePassBase):
         file = 'CoV_wind_station_output_prox_penalty.nc' #file with _II has smaller exclusion zone
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        self.data['ts_wind'] = f.variables['CoV_wind'][:,:]
+        temp = f.variables['CoV_wind'][:,:]
+
+        if not mureiltypes.check_ndarray_float(temp, True):
+            self.data['ts_wind'] = numpy.array(temp, dtype=float)
+        else:
+            self.data['ts_wind'] = temp
 
         file = 'CoV_dsr_station_output_prox_penalty.nc'
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        self.data['ts_solar'] = f.variables['CoV_dsr'][:,:]
+        temp = f.variables['CoV_dsr'][:,:]
+
+        if not mureiltypes.check_ndarray_float(temp, True):
+            self.data['ts_solar'] = numpy.array(temp, dtype=float)
+        else:
+            self.data['ts_solar'] = temp
 
         file = 'Aus_demand_sample_raw.nc'
         infile = dir + file
         f = nc.NetCDFFile(infile)
-        self.data['ts_demand'] = f.variables['ts_demand'][:]
+        temp = f.variables['ts_demand'][:]
+
+        if not mureiltypes.check_ndarray_float(temp, True):
+            self.data['ts_demand'] = numpy.array(temp, dtype=float)
+        else:
+            self.data['ts_demand'] = temp
         
         wind_nan = numpy.isnan(self.data['ts_wind'])
         solar_nan = numpy.isnan(self.data['ts_solar'])

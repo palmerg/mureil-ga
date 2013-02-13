@@ -30,34 +30,51 @@ import numpy
 """Module providing helper functions for type-checking of arrays.
 """
 
-def check_ndarray_float(array):
-    """Return only if the array is of type numpy.ndarray, with a float dtype.
-    If not, raise a mureilexception.ArrayDataTypeException
+def check_ndarray_float(array, no_exception=False):
+    """Return only if the array is of type numpy.ndarray, with a float64 dtype.
+    If not, raise a mureilexception.ArrayDataTypeException. 
+    If no_exception is True, don't raise the exception, but return False.
     """
     
     if type(array) is not numpy.ndarray:
-        msg = ('Expected array to be numpy array, but found ' + array.dtype.name + 
-            ' in ' + mureilexception.find_caller(1))
-        raise mureilexception.ArrayDataTypeException(msg, __file__, {})
-    
-    if not(array.dtype.name.startswith('float')):
-        msg = ('Expected array to be float dtype, but found ' + array.dtype.name + 
-            ' in ' + mureilexception.find_caller(1))
-        raise mureilexception.ArrayDataTypeException(msg, __file__, {})
+        if no_exception:
+            return False
+        else:
+            msg = ('Expected array to be numpy array, but found ' + array.dtype.name + 
+                ' in ' + mureilexception.find_caller(1))
+            raise mureilexception.ArrayDataTypeException(msg, {})
+
+    if not(array.dtype.name == 'float64'):
+        if no_exception:
+            return False
+        else:
+            msg = ('Expected array to be float64 dtype, but found ' + array.dtype.name + 
+                ' in ' + mureilexception.find_caller(1))
+            raise mureilexception.ArrayDataTypeException(msg, {})
+
+    return True
 
 
-def check_ndarray_int(array):
+def check_ndarray_int(array, no_exception=False):
     """Return only if the array is of type numpy.ndarray, with int dtype.
     If not, raise a mureilexception.ArrayDataTypeException
+    If no_exception is True, don't raise the exception, but return False.
     """
     
     if type(array) is not numpy.ndarray:
-        msg = ('Expected array to be numpy array, but found ' + array.dtype.name + 
-            ' in ' + mureilexception.find_caller(1))
-        raise mureilexception.ArrayDataTypeException(msg, __file__, {})
+        if no_exception:
+            return False
+        else:
+            msg = ('Expected array to be numpy array, but found ' + array.dtype.name + 
+                ' in ' + mureilexception.find_caller(1))
+            raise mureilexception.ArrayDataTypeException(msg, {})
     
     if not(array.dtype.name.startswith('int')):
-        msg = ('Expected array to be int dtype, but found ' + array.dtype.name + 
-            ' in ' + mureilexception.find_caller(1))
-        raise mureilexception.ArrayDataTypeException(msg, __file__, {})
+        if no_exception:
+            return False
+        else:
+            msg = ('Expected array to be int dtype, but found ' + array.dtype.name + 
+                ' in ' + mureilexception.find_caller(1))
+            raise mureilexception.ArrayDataTypeException(msg, {})
 
+    return True

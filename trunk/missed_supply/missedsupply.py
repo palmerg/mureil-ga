@@ -129,7 +129,7 @@ class CappedMissedSupply(singlepassgenerator.SinglePassGeneratorBase):
         """The demand timeseries is required to calculate the reliability requirement,
         summed here to find total demand.
         """
-        self.total_demand = sum(data['ts_demand'])
+        self.total_demand = float(sum(data['ts_demand']))
         
     
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):
@@ -224,16 +224,16 @@ class TimestepReliabilityMissedSupply(singlepassgenerator.SinglePassGeneratorBas
             output: numpy.array - Power 'generated' at each timestep,
                 simply rem_demand where > 0.
         """
+        
         output = rem_demand.clip(0)
         sum_out = numpy.sum(output)
         # cost is in $M but cost_per_mwh is $
         cost = 1e-6 * sum_out * self.config['cost_per_mwh'] * self.config['timestep_hrs']
         # scale up to capex timescale
         cost *= self.config['variable_cost_mult'] 
-       
 
-	timesteps_missed = numpy.count_nonzero(output)
-	reliability_percent = (1 - float(timesteps_missed) / float(len(output))) * 100
+        timesteps_missed = numpy.count_nonzero(output)
+        reliability_percent = (1 - float(timesteps_missed) / float(len(output))) * 100
 
         if save_result:
             self.saved['capacity'] = sum_out
@@ -241,12 +241,12 @@ class TimestepReliabilityMissedSupply(singlepassgenerator.SinglePassGeneratorBas
             self.saved['cost'] = cost
             self.saved['other'] = {'reliability': reliability_percent}
         
-	return cost, output
+        return cost, output
 
 
     def interpret_to_string(self):
         if self.saved:
-            return 'Linear Missed-Supply, total {:.2f} MW-timestamps missed'.format(
-                self.saved['capacity'])
+            return 'Timestep Linear Missed-Supply, total {:.2f} MW-timestamps missed, reliability {:.3f}%'.format(
+                self.saved['capacity'], self.saved['other']['reliability'])
         else:
             return None

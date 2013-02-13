@@ -38,6 +38,7 @@ import importlib
 import logging
 import string
 import copy
+import types
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ def read_config_file(filename):
     if read_file == []:
         msg = 'Configuration file ' + filename + ' not opened.'
         logger.critical(msg)
-        raise mureilexception.ConfigException(msg, __name__, {})
+        raise mureilexception.ConfigException(msg, {})
 
     config = {}
 
@@ -637,4 +638,34 @@ def string_to_bool(val):
     Outputs:
         boolean
     """
-    return (val == 'True')
+    if type(val) == types.BooleanType:
+        return val
+    else:
+        return (val == 'True')
+    
+    
+def supply_single_pass_data(gen, data, gen_type):
+    """Make the call to set_data for gen, extracting the relevant series from data.
+    
+    Inputs:
+        gen: an object subclassed from SinglePassGeneratorBase
+        data: an object subclassed from DataSinglePassBase
+        gen_type: the name the calling Master uses to refer to the generator, for
+            the exception message.
+              
+    Outputs:
+        None. Raises a ConfigException if a generator requests a series that is not
+        provided.
+    """
+    
+    data_req = gen.get_data_types()
+    this_data_dict = {}
+    for key in data_req:
+        try:
+            this_data_dict[key] = data.get_timeseries(key)
+        except mureilexception.ConfigException:
+            msg = 'Data series ' + str(key) + ' requested by ' + gen_type + ', but is not provided.'
+            raise mureilexception.ConfigException(msg, {})
+
+    gen.set_data(this_data_dict)
+

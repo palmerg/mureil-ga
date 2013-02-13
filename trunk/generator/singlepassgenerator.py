@@ -94,6 +94,9 @@ class SinglePassGeneratorBase(configurablebase.ConfigurableBase):
         """From the params and remaining demand, update the current values, and calculate
         the output power provided and the total cost.
         
+        This function is required to be thread-safe (when save_result is False) to allow 
+        multiprocessing.
+        
         Inputs:
             params: list of numbers - from the optimiser, with the list
                 the same length as requested in get_param_count.

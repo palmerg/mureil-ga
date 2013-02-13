@@ -169,3 +169,44 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
         else:
             return None
             
+            
+class IncrementalInstantOptimisableThermal(InstantOptimisableThermal):
+    """This is a hack for the GE demo, in advance of a decent system for handling
+    the incremental / multi-decade operation. The model expects twice as many
+    params to what it asked for, and then treats the first set as the total stock
+    in that decade, and the second set as stock added in that decade.
+    """
+
+    def calculate_cost_and_output(self, params, rem_demand, save_result=False):
+        """Attempts to meet remaining demand by burning fossil fuel, and
+        builds capacity as directed by its params.
+        
+        Inputs:
+            params: specifies capacity. First value is total stock, second
+                is incremental.
+            rem_demand: numpy.array - a time series of the demand remaining
+                 to be met.
+            save_result: boolean, default False - if set, save the results
+                 from these params and rem_demand into the self.saved dict.
+         Outputs:
+            cost: number - capex cost plus fuel and carbon tax cost. Capex
+                only charged on the incremental capacity.
+            output: numpy.array - Power generated at each timestep.
+         """
+ 
+        max_cap = params[0] * self.config['size']
+        # numpy.clip sets lower and upper bounds on array values
+        output = rem_demand.clip(0, max_cap)
+        variable_cost = numpy.sum(output) * self.config['timestep_hrs'] * (
+            self.config['fuel_price_mwh'] + (
+            self.config['carbon_price'] * self.config['carbon_intensity'])) / 1e6
+        cost = variable_cost * self.config['variable_cost_mult'] + (
+            self.config['capex'] * (params[1] * self.config['size']))
+        
+        if save_result:
+            self.saved['capacity'] = max_cap
+            self.saved['cost'] = cost
+            self.saved['output'] = numpy.copy(output)
+ 
+        return cost, output
+         
