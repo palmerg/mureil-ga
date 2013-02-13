@@ -49,7 +49,11 @@ class ConfigurableInterface(object):
 class MasterInterface(ConfigurableInterface):
 
     @abc.abstractmethod
-    def run(self):
+    def set_config(self, full_config, extra_data=None):
+        pass
+
+    @abc.abstractmethod
+    def run(self, extra_data=None):
         pass
 
     @abc.abstractmethod

@@ -72,6 +72,14 @@ def single_test(file_dir, config_name, pickle_name):
 
         exp_bgd = exp_result['best_gene_data']
         new_bgd = new_result['best_gene_data']
+
+        # round the total cost to simplify regression comparisions
+        # where internal rounding is an issue
+        for i in range(len(exp_bgd)):
+            exp_bgd[i][1] = round(exp_bgd[i][1], 0)
+
+        for i in range(len(new_bgd)):
+            new_bgd[i][1] = round(new_bgd[i][1], 0)
     
         match = (exp_bgd == new_bgd)
     

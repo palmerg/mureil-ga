@@ -25,6 +25,7 @@
 #
 
 from generator import singlepassgenerator
+from tools import mureiltypes
 
 import numpy
 import copy
@@ -70,16 +71,16 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
 
 
     def get_data_types(self):
-        """The demand timeseries is required to calculate the reliability requirement.
+        """The demand timeseries is supplied for use in forecasting the required demand.
         """
         return ['ts_demand']
 
         
     def set_data(self, data):
-        """The demand timeseries is required to calculate the reliability requirement,
-        summed here to find total demand.
+        """The demand timeseries is supplied for use in forecasting the required demand.
         """
         self.ts_demand = data['ts_demand']
+        mureiltypes.check_ndarray_float(self.ts_demand)
     
     
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):

@@ -1,3 +1,29 @@
+#
+#
+# Copyright (C) University of Melbourne 2012
+#
+#
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+#
+#
+
 """ Prints the docstring of the get_config_spec method from all python modules
     within the tree beneath the directory os.getcwd(). Prints to both stdout
     and to a file get_config_spec.txt
@@ -13,9 +39,10 @@ from generator import singlepassgenerator
 
 def list_modules(directory):
     mod_list = []
+    top_dir_len = len(string.split(directory, "\\"))
     for dirpath, dirnames, filenames in os.walk(directory):
            path_list = string.split(dirpath, "\\")
-           mod_pkg = string.join(path_list[2:], ".")
+           mod_pkg = string.join(path_list[top_dir_len:], ".")
 
            for file_name in filenames:
                   full_path = os.path.join(dirpath, file_name)
@@ -30,7 +57,6 @@ def list_modules(directory):
 
                       mod_list.append(mod_full)
 
-    #print mod_list
     return mod_list
 
 
@@ -47,7 +73,7 @@ def my_import(name):
 def print_docstring(module_list):
     """ Prints the docstring of the get_config_spec method from the modules
         within the list file_list"""
-    out_file = os.path.join (cur_dir, "get_config_spec help.txt");
+    out_file = os.path.join (cur_dir, "get_config_spec_help.txt");
     f = open(out_file, "w")
     for module_name in module_list:
         if string.find(module_name, ".")< 0:

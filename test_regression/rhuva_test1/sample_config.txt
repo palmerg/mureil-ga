@@ -79,8 +79,9 @@ cost_per_mwh: 0.005
 model: rhuva_data1.Data
 
 [Data_New]
+description: some of Robert's 2 month data
 model: data.ncdata.Data
-ts_list: ts_wind ts_solar ts_demand
+ts_float_list: ts_wind ts_solar ts_demand
 ts_wind_file: CoV_wind_station_output_prox_penalty.nc
 ts_wind_vbl: CoV_wind
 ts_solar_file: CoV_dsr_station_output_prox_penalty.nc

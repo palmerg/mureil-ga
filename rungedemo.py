@@ -33,15 +33,32 @@ logger = logging.getLogger(__name__)
 
 def rungedemo(flags, input_data):
     master = None
+    results = None
+
+    # This section constructs the master, and does not depend on
+    # the input_data from the web interface.
     try:
-        master = mureilbuilder.build_master(flags, input_data)
+        master = mureilbuilder.build_master(flags)
     except mureilexception.MureilException as me:
         handle_exception(me)
 
-    if master:
-        return master.finalise()
-    else:
-        return None
+    # master.run(input_data) completes all the processing required
+    # on a single request, with output into the 'results' variable.
+    # A server-type setup where the master was only constructed once
+    # (and hence the timeseries data read in only once) would call 
+    # results = master.run(input_data) for each request.
+    if master:    
+        try:
+            results = master.run(input_data)
+        except mureilexception.MureilException as me:
+            handle_exception(me)
+        except Exception as me:
+            logger.critical('Execution stopped on unhandled exception',
+                exc_info=me)
+        finally:
+            master.finalise()
+    
+    return results
     
 
 def handle_exception(me):

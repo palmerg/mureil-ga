@@ -34,14 +34,14 @@ class DataSinglePassBase(configurablebase.ConfigurableBase,
             return self.data[ts_name]
         except:
             msg = 'Timeseries ' + str(ts_name) + ' requested, but not available.'
-            raise mureilexception.ConfigException(msg, __file__, {})
+            raise mureilexception.ConfigException(msg, {})
             
     def get_ts_length(self):
         try:
             return self.ts_length
         except:
             msg = 'Data ts length requested, but ts_length not available'
-            raise mureilexception.ConfigException(msg, __file__, {})
+            raise mureilexception.ConfigException(msg, {})
 
     pass
     

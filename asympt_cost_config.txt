@@ -38,7 +38,7 @@ size: 50
 install: 500
 type: Solar_Thermal
 data_type: ts_solar
-max_count: 0
+alpha: 5.0
 
 [Wind]
 model: generator.singlepassvariablegenerator.VariableGeneratorAsymptCost
@@ -47,8 +47,7 @@ size: 2.5
 install: 70
 type: Wind
 data_type: ts_wind
-max_count: 0
-
+alpha: 1.8
 
 [Hydro]
 model: hydro.basicpumpedhydro.BasicPumpedHydro

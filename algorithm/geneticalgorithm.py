@@ -67,6 +67,7 @@ class Engine(configurablebase.ConfigurableBase):
         self.clones_data = []
         self.best_gene_data = []
         self.iteration_count = -1
+        
         self.is_configured = True
         
         num = 0
@@ -95,7 +96,8 @@ class Engine(configurablebase.ConfigurableBase):
             max_param_val: maximum gene value value
             base_mute: ?
             gene_mute: ?
-            gene_test_callback: function handle to calculate cost of gene
+            gene_test_callback: function handle to calculate cost of gene. This function
+                must be thread-safe as it will be called in multiprocessing.
             start_values_min: list of minimum initialisation values for genes.
                 Should be empty, or the same length as min_len.
             start_values_max: as for start_values_min, but maximum.
@@ -211,7 +213,7 @@ class Engine(configurablebase.ConfigurableBase):
         if (not self.is_configured):
             msg = 'do_iteration requested, but geneticalgorithm is not configured'
             logger.critical(msg)
-            raise mureilexception.ConfigException(msg, 'geneticalgorithm.do_iteration', {})
+            raise mureilexception.ConfigException(msg, {})
 
         self.iteration_count += 1
         self.population.mutate()
@@ -307,17 +309,9 @@ class Engine(configurablebase.ConfigurableBase):
 
 
 class Value:
-    def __init__(self, min_size, max_size, min_start, max_start):
-        self.min_size = min_size
-        self.max_size = max_size
-        self.value = random.randint(min_start, max_start)
+    def __init__(self, min_size, max_size):
+        self.value = random.randint(min_size, max_size)
         return None
-    def rand(self):
-        """input: None
-        output: int
-        returns random number between configs min & max _size
-        """
-        return random.randint(self.min_size, self.max_size)
 
 
 class Gene(list):
@@ -341,11 +335,9 @@ class Gene(list):
         
         for i in range(self.length):
             if not min_starts:
-                self.base = Value(min_param_val, max_param_val,
-                    min_param_val, max_param_val)
+                self.base = Value(min_param_val, max_param_val)
             else:
-                self.base = Value(min_param_val, max_param_val,
-                    min_starts[i], max_starts[i])
+                self.base = Value(min_starts[i], max_starts[i])
             self.values.append(self.base.value)
         return None
     def get_score(self):
@@ -441,7 +433,6 @@ class Pop(list):
             i = co_ord[0]
             j = co_ord[1]
             self.base = Value(self.config['min_param_val'], 
-                self.config['max_param_val'], self.config['min_param_val'],
                 self.config['max_param_val'])
             self.genes[i].values[j] = self.base.value
         for gene_no in freaks:
@@ -451,7 +442,8 @@ class Pop(list):
                 freak = freak[:new_len]
             else:
                 while new_len > len(freak):
-                    self.base = Value(self.config['min_param_val'], self.config['max_param_val'])
+                    self.base = Value(self.config['min_param_val'], 
+                        self.config['max_param_val'])
                     freak.append(self.base.value)
             self.genes[gene_no].values = freak
         return None

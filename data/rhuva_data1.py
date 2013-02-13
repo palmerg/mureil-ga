@@ -60,9 +60,12 @@ class Data(datasinglepassbase.DataSinglePassBase):
         combo = numpy.array([wind_row, solar_row, demand_nan])
         combo_flat = combo.any(0)
         
-        self.data['ts_wind'] = self.data['ts_wind'][combo_flat == False, :]
-        self.data['ts_solar'] = self.data['ts_solar'][combo_flat == False, :]
-        self.data['ts_demand'] = self.data['ts_demand'][combo_flat == False]
+        self.data['ts_wind'] = numpy.array(
+            self.data['ts_wind'][combo_flat == False, :], dtype=float)
+        self.data['ts_solar'] = numpy.array(
+            self.data['ts_solar'][combo_flat == False, :], dtype=float)
+        self.data['ts_demand'] = numpy.array(
+            self.data['ts_demand'][combo_flat == False], dtype=float)
         
         print self.data['ts_wind'].shape
         print self.data['ts_solar'].shape

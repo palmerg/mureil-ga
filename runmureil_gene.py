@@ -23,34 +23,18 @@
 #SOFTWARE.
 #
 #
-"""Functions for use in testbench operation.
+
+"""Script to call runmureil with extra_data read from the pickle file listed as the
+first argument, extracting 'best_gene' from the dict in there. This will cause
+the simulation to initialise all the genes to this sequence.
 """
 
-import os
-from tools import mureilbuilder
-import numpy
+import runmureil
+import sys
+import pickle
 
-def unittest_path_setup(self, thisfile):
-    """Set up all the paths to run the unit tests. Required when using
-    unittest discover.
-    
-    Determines the directory the test itself is in, and the
-    directory it is being called from. Changes into the test directory
-    to run the test. Sets the cwd variable in self to the working directory.
-    
-    Also resets the logger functionality, sending output to stdout.
-    
-    Inputs:
-        self: the unittest.TestCase object calling this function
-            (specific object type is irrelevant - just needs to be an object)
-        thisfile: the __file__ value for the test module
-    
-    Outputs:
-        None
-    """
-    
-    test_dir = os.path.dirname(os.path.realpath(thisfile)) 
-    self.cwd = os.getcwd()
-    os.chdir(test_dir)
-    mureilbuilder.do_logger_setup({})
-
+if __name__ == '__main__':
+    p = pickle.load(open(sys.argv[1], 'rb'))
+    extra_data = {}
+    extra_data['start_gene'] = p['best_gene']
+    runmureil.runmureil(sys.argv[2:], extra_data)

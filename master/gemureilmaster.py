@@ -28,7 +28,6 @@ import time
 import logging
 import copy
 import json
-from collections import defaultdict
 from os import path
 
 from tools import mureilbuilder, mureilexception, mureiloutput, globalconfig
@@ -82,16 +81,6 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         self.global_config['data_ts_length'] = self.data.get_ts_length()
         globalconfig.post_data_global_calcs(self.global_config)
 
-        # TODO ASAP - this only works with the hard-coded file. Make it more
-        # like simplemureilmaster.py.
-        self.data_dict = {}
-        self.data_dict['ts_wind'] = numpy.array(self.data.wind_data(), dtype=float)
-        self.data_dict['ts_solar'] = numpy.array(self.data.solar_data(), dtype=float)
-        self.data_dict['ts_demand'] = numpy.array(self.data.demand_data(), dtype=float)
-        self.data_dict['demand_drivers'] = self.data.demand_drivers()
-        self.global_config['data_ts_length'] = len(self.data_dict['ts_demand'])
-        globalconfig.post_data_global_calcs(self.global_config)
-    
         # Instantiate the generator objects, set their data, determine their param requirements
         param_count = 0
         self.gen_list = {}
@@ -106,11 +95,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             self.gen_list[gen_type] = gen
 
             # Supply data as requested by the generator
-            data_req = gen.get_data_types()
-            new_data_dict = {}
-            for key in data_req:
-                new_data_dict[key] = self.data_dict[key]    
-            gen.set_data(new_data_dict)
+            mureilbuilder.supply_single_pass_data(gen, self.data, gen_type)
 
             # Determine how many parameters this generator requires and
             # allocate the slots in the params list
@@ -124,12 +109,6 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         
         self.param_count = param_count
         
-        # and read in the json data for generator capacity
-        self.load_js(extra_data)
-        
-        # and load the data for the demand model
-        self.demand_settings = json.loads(extra_data)['selections']['demand']    
-
         self.is_configured = True
     
     
@@ -140,17 +119,76 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             ('output_file', None, 'ge.pkl'),
             ('dispatch_order', mureilbuilder.make_string_list, None),
             ('do_plots', mureilbuilder.string_to_bool, False),
-            ('year_list', mureilbuilder.make_string_list, None)
+            ('year_list', mureilbuilder.make_string_list, None),
+            ('carbon_price_list', mureilbuilder.make_int_list, None)
             ]
 
 
-    def run(self):
+    def run(self, extra_data):
         if (not self.is_configured):
             msg = 'run requested, but GeMureilMaster is not configured'
             logger.critical(msg)
-            raise mureilexception.ConfigException(msg, 'GeMureilMaster.run', {})
+            raise mureilexception.ConfigException(msg, {})
+
+        # Read in the json data for generator capacity
+        self.load_js(extra_data)
+        
+        all_years_out = {}
+
+        # Compute an annual total for generation
+        output_multiplier = (self.global_config['variable_cost_mult'] /
+            self.global_config['time_period_yrs'])
+
+        for year_index in range(len(self.config['year_list'])):
+            
+            ## MG - this is a hack. The config should be set with all
+            ## of the values at the start, and then be passed the year,
+            ## not have them updated each time. This is ok here as it's
+            ## only evaluated once anyway.
+           
+            results = self.evaluate_results(year_index)
+
+            year = self.config['year_list'][year_index]
+
+            # print results['gen_desc']
+            
+            all_years_out[str(year)] = year_out = {}
+            
+            # Output, in MWh
+            year_out['output'] = output_section = {}
+            
+            # Cost, in $M
+            year_out['cost'] = cost_section = {}
+            
+            # Total demand, in MWh per annum
+            for generator_type, value in results['other']:
+                if value is not None:
+                    if 'ts_demand' in value:
+                        year_out['demand'] = '{:.2f}'.format(
+                            abs(sum(value['ts_demand'])) * self.global_config['timestep_hrs'] *
+                            output_multiplier)
+       
+            # Total output, in MWh per annum
+            for generator_type, values in results['output']:
+                output_section[generator_type] = '{:.2f}'.format(
+                    sum(values) * self.global_config['timestep_hrs'] *
+                    output_multiplier)
     
-        return None
+            # Total cost, per decade
+            for generator_type, value in results['cost']:
+                cost_section[generator_type] = value
+# or as a string:
+#                cost_section[generator_type] = '{:.2f}'.format(value)
+
+            for generator_type, value in results['other']:
+                if value is not None:
+                    if 'reliability' in value:
+                        year_out['reliability'] = value['reliability']
+
+            if 'reliability' not in year_out:
+                year_out['reliability'] = 100
+
+        return all_years_out
     
     
     def load_js(self, json_data):
@@ -162,13 +200,15 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         
         generators = json.loads(json_data)['selections']['generators']
 
-        ## TODO - this isn't at all flexible, but will do for the demo.
+        ## TODO - this isn't at all flexible, but will do for the first demo.
         ## Only coal, gas, wind and solar are handled, and only one of each
-        ## hydro is awaiting an optimisable-capacity model
+        ## hydro is awaiting a rainfall-based model.
 
-        self.params = {}
+        self.total_params = {}
+        self.inc_params = {}
 
-        gen_list = {}
+        gen_total_table = {}
+        gen_inc_table = {}
         year_list = self.config['year_list']
 
         for gen in generators:
@@ -176,110 +216,75 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
                 msg = 'Generator ' + str(gen['type']) + ' ignored'
                 logger.warning(msg)
             else:
-                if gen['type'] not in gen_list:
-                    new_list = numpy.zeros(len(self.config['year_list']))
-                    gen_list[gen['type']] = new_list
+                if gen['type'] not in gen_total_table:
+                    new_total_table = numpy.zeros(len(self.config['year_list']))
+                    new_inc_table = numpy.zeros(len(self.config['year_list']))
+                    gen_total_table[gen['type']] = new_total_table
+                    gen_inc_table[gen['type']] = new_inc_table
 
-                this_list = gen_list[gen['type']]
+                this_total_table = gen_total_table[gen['type']]
+                this_inc_table = gen_inc_table[gen['type']]
 
+                # build date could be specified as earlier, so capex is not paid.
                 build_index = numpy.where(numpy.array(year_list) == str(gen['decade']))
-                if build_index[0]:
+                if len(build_index[0] > 0):
                     build_index = build_index[0][0]
                 else:
-                    build_index = 0
+                    build_index = -1
 
                 decommission_index = numpy.where(numpy.array(year_list) == str(gen['decomission']))
-                if decommission_index[0]:
+                if len(decommission_index[0] > 0):
                     decommission_index = decommission_index[0][0]
                 else:
                     decommission_index = len(year_list) - 1
 
-                # Assumes the plant is decommissioned at the end of the decade specified by decommissioning date
-                for i in range(build_index, decommission_index + 1):
-                    this_list[i] += gen['capacity']
-
+                # accumulate new capacity in the incremental list
+                if build_index >= 0:
+                    this_inc_table[build_index] += gen['capacity']                    
+                
+                # and add the new capacity to the total across all years until decommissioning
+                start_fill = build_index
+                if (build_index == -1):
+                    start_fill = 0
+                for i in range(start_fill, decommission_index + 1):
+                    this_total_table[i] += gen['capacity']
+                    
         for i in range(0, len(year_list)):
-            # This code assumes only one param per type, a simplification for the demo.
-            this_params = numpy.zeros(4)
+            this_total_params = numpy.zeros(4)
+            this_inc_params = numpy.zeros(4)
+            
             for gen_type in ['coal', 'wind', 'solar', 'gas']:
                 param_ptr = self.gen_params[gen_type]
-                if (param_ptr[0] < param_ptr[1]) and (gen_type in gen_list):
-                    this_params[param_ptr[0]] = gen_list[gen_type][i]
+                # check if this generator takes any parameters at all before writing to it
+                if (param_ptr[0] < param_ptr[1]) and (gen_type in gen_total_table):
+                    this_total_params[param_ptr[0]] = gen_total_table[gen_type][i]
+                    this_inc_params[param_ptr[0]] = gen_inc_table[gen_type][i]
 
-            self.params[str(year_list[i])] = this_params
+            self.total_params[str(year_list[i])] = this_total_params
+            self.inc_params[str(year_list[i])] = this_inc_params
     
+        self.demand_settings = json.loads(json_data)['selections']['demand']
 
     
     def finalise(self):
-        """input: None
-        output: None
-        prints values, scores, ect. at end
-        """
+        pass
 
-        all_years_out = defaultdict(dict)
-
-        for year in self.config['year_list']:
+ 
             
-            ### MG - this is a hack - the model should select which year in
-            ### the calc_cost function. tbd when multi-time-period is done.
-            ### also the models that require ts_demand (particularly the
-            ### missed_supply) will need to be updated with the current value,
-            ### not yet done.
-            ### and the demand model should be selectable by config, tbd
-            
-            self.data_dict['ts_demand'] = temperaturedemand.calculate_demand(
-                self.data_dict['demand_drivers'], self.demand_settings[str(year)], str(year), 
-                self.global_config['timestep_hrs'])
-        
-            results = self.evaluate_results(self.params[str(year)])
+    def calc_cost(self, ts_demand, total_params, inc_params, save_result=False):
 
-            #print results['gen_desc']
-            
-            all_years_out[str(year)] = year_out = defaultdict(dict)
-            
-            # Output, in MWh
-            year_out['output'] = output_section = defaultdict(dict)
-            
-            # Cost, in $M
-            year_out['cost'] = cost_section = defaultdict(dict)
-            
-            # Total demand, in MWh
-            year_out['demand'] = '{:.2f}'.format(
-                numpy.sum(self.data_dict['ts_demand']) * self.global_config['timestep_hrs'])
-    
-            for generator_type, values in results['output']:
-                output_section[generator_type] = '{:.2f}'.format(
-                    sum(values) * self.global_config['timestep_hrs'])
-    
-            for generator_type, value in results['cost']:
-                cost_section[generator_type] = value
-# or as a string:
-#                cost_section[generator_type] = '{:.2f}'.format(value)
-
-	    for generator_type, value in results['other']:
-		if value is not None:
-	            if 'reliability' in value:
-		        year_out['reliability'] = value['reliability']
-
-	    if 'reliability' not in year_out:
-		year_out['reliability'] = 100
-
-        return all_years_out
-        
-            
-    def calc_cost(self, gene, save_result=False):
-
-        params = numpy.array(gene)
-
-        rem_demand = numpy.array(self.data_dict['ts_demand'], dtype=float)
+        rem_demand = numpy.array(ts_demand, dtype=float)
         cost = 0
 
         for gen_type in self.dispatch_order:
             gen = self.gen_list[gen_type]
             gen_ptr = self.gen_params[gen_type]
 
+            this_params = numpy.concatenate((total_params[gen_ptr[0]:gen_ptr[1]],
+                inc_params[gen_ptr[0]:gen_ptr[1]]))
+
             (this_cost, this_ts) = gen.calculate_cost_and_output(
-                params[gen_ptr[0]:gen_ptr[1]], rem_demand, save_result)
+                this_params, rem_demand, save_result)
 
             cost += this_cost
             rem_demand -= this_ts
@@ -287,12 +292,12 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         return cost
 
 
-    def evaluate_results(self, params):
+    def evaluate_results(self, year_index):
         """Collect a dict that includes all the calculated results from a
-        run with params.
+        run for that year.
         
         Inputs:
-            params: list of numbers, typically the best output from a run.
+            year: an index for the current year, indexing self.config['year_list']
             
         Outputs:
             results: a dict containing:
@@ -304,8 +309,23 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
                 other: list of tuples of (gen_type, other saved data)
         """
         
-        # First evaluate with these parameters
-        self.calc_cost(params, save_result=True)
+        year = self.config['year_list'][year_index]
+        
+        total_params = self.total_params[year]
+        inc_params = self.inc_params[year]
+        
+        ts_demand = numpy.zeros(self.data.get_ts_length(), dtype=float)
+
+        # Set the year-dependent values
+        # TODO - this is a hack, and is not thread-safe. Remove once
+        # there is a proper decade by decade system.
+        self.gen_list['demand'].update_config({'year': year})
+        self.gen_list['demand'].update_config(self.demand_settings[year])
+        for gen_type in self.dispatch_order:
+            self.gen_list[gen_type].update_config({'carbon_price': 
+                self.config['carbon_price_list'][year_index]})
+
+        self.calc_cost(ts_demand, total_params, inc_params, save_result=True)
         
         results = {}
         results['gen_desc'] = []

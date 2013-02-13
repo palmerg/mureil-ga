@@ -27,6 +27,7 @@
 import pupynere as nc
 
 from data import datasinglepassbase
+import numpy
 
 class Data(datasinglepassbase.DataSinglePassBase):
     def complete_configuration(self):
@@ -35,9 +36,12 @@ class Data(datasinglepassbase.DataSinglePassBase):
         infile = dir + file
         f = nc.NetCDFFile(infile)
         self.data = {}
-        self.data['ts_wind'] = f.variables['ts_wind'][:,:]
-        self.data['ts_solar'] = f.variables['ts_solar'][:,:]
-        self.data['ts_demand'] = f.variables['ts_demand'][:]
+        self.data['ts_wind'] = numpy.array(
+            f.variables['ts_wind'][:,:], dtype=float)
+        self.data['ts_solar'] = numpy.array(
+            f.variables['ts_solar'][:,:], dtype=float)
+        self.data['ts_demand'] = numpy.array(
+            f.variables['ts_demand'][:], dtype=float)
         self.ts_length = self.data['ts_wind'].shape[0]
         self.is_configured = True
         return None

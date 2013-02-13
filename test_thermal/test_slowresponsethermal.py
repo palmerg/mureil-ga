@@ -64,12 +64,12 @@ class TestSlowResponseThermal(unittest.TestCase):
             'type': 'BlackCoal'
         }
 
-        ts_demand = {'ts_demand': np.array([110, 120, 130, 140, 140, 140, 140, 130, 120, 110])}
-        rem_demand = np.array([10, 20, 30, 40, 40, 40, 40, 30, 20, 10])
+        ts_demand = {'ts_demand': np.array([110, 120, 130, 140, 140, 140, 140, 130, 120, 110], dtype=float)}
+        rem_demand = np.array([10, 20, 30, 40, 40, 40, 40, 30, 20, 10], dtype=float)
         
         # for original no-code version, just output at full capacity all the time
         # will test here with capacity = 500MW
-        exp_ts = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500])
+        exp_ts = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500], dtype=float)
         exp_cost = (10 * 500 * (10 + 5)) * 1e-6 + (3 * 500)
         
         try:
@@ -111,12 +111,12 @@ class TestSlowResponseThermalFixed(unittest.TestCase):
             'fixed_capacity': 1200
         }
 
-        ts_demand = {'ts_demand': np.array([110, 120, 130, 140, 140, 140, 140, 130, 120, 110])}
-        rem_demand = np.array([10, 20, 30, 40, 40, 40, 40, 30, 20, 10])
+        ts_demand = {'ts_demand': np.array([110, 120, 130, 140, 140, 140, 140, 130, 120, 110], dtype=float)}
+        rem_demand = np.array([10, 20, 30, 40, 40, 40, 40, 30, 20, 10], dtype=float)
         
         # for original no-code version, just output at full capacity all the time
         # will test here with capacity = 1200 MW
-        exp_ts = np.array([1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200])
+        exp_ts = np.array([1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200], dtype=float)
         exp_cost = (10 * 1200 * (10 + 5)) * 1e-6 + (3 * 1200)
         
         try:

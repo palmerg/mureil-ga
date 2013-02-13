@@ -96,13 +96,8 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             self.gen_list[gen_type] = gen
 
             # Supply data as requested by the generator
-            data_req = gen.get_data_types()
-            new_data_dict = {}
-            for key in data_req:
-                new_data_dict[key] = self.data.get_timeseries(key)
-                mureiltypes.check_ndarray_float(new_data_dict[key])
-            gen.set_data(new_data_dict)
-
+            mureilbuilder.supply_single_pass_data(gen, self.data, gen_type)
+    
             # Determine how many parameters this generator requires and
             # allocate the slots in the params list
             params_req = gen.get_param_count()
@@ -112,18 +107,34 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
                 self.gen_params[gen_type] = (param_count, 
                     param_count + params_req)
                 (starts_min, starts_max) = gen.get_param_starts()
+
                 if len(starts_min) == 0:
                     start_values_min += ((np.ones(params_req) * self.global_config['min_param_val']).tolist())
-                    start_values_max += ((np.ones(params_req) * self.global_config['max_param_val']).tolist())
                 else:
                     start_values_min += starts_min
+
+                if len(starts_max) == 0:
+                    start_values_max += ((np.ones(params_req) * self.global_config['max_param_val']).tolist())
+                else:
                     start_values_max += starts_max
+
             param_count += params_req
         
         self.param_count = param_count
         
-        print start_values_min
-        print start_values_max
+        # Check if 'extra_data' has been provided, as a full gene to start at.
+        # extra_data needs to be a dict with entry 'start_gene' that is a list
+        # of integer values the same length as param_count.
+        if extra_data is not None:
+            if 'start_gene' in extra_data:
+                if not (len(start_values_min) == param_count):
+                    msg = ('extra_data of start_gene passed to simplemureilmaster. ' +
+                        'Length expected = {:d}, found = {:d}'.format(param_count, 
+                        len(start_values_min)))
+                    raise mureilexception.ConfigException(msg, {})
+                else:
+                    start_values_min = extra_data['start_gene']
+                    start_values_max = extra_data['start_gene']
         
         # Instantiate the genetic algorithm
         mureilbuilder.check_section_exists(full_config, self.config['algorithm'])
@@ -148,22 +159,28 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             ('dispatch_order', mureilbuilder.make_string_list, None),
             ('optim_type', None, 'missed_supply'),
             ('do_plots', mureilbuilder.string_to_bool, False),
+            ('output_frequency', int, 500)
             ]
 
 
-    def run(self):
+    def run(self, extra_data=None):
         start_time = time.time()
         logger.critical('Run started at %s', time.ctime())
 
         if (not self.is_configured):
             msg = 'run requested, but simplemureilmaster is not configured'
             logger.critical(msg)
-            raise mureilexception.ConfigException(msg, 'simplemureilmaster.run', {})
+            raise mureilexception.ConfigException(msg, {})
     
         try:
             self.algorithm.prepare_run()
             for i in range(self.config['iterations']):
                 self.algorithm.do_iteration()
+                if ((self.config['output_frequency'] > 0) and
+                    ((i % self.config['output_frequency']) == 0)):
+                    logger.info('Interim results at iteration %d', i)
+                    self.output_results()
+                    
         except mureilexception.AlgorithmException:
             # Insert here something special to do if debugging
             # such an exception is required.
@@ -171,17 +188,15 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             raise
     
         logger.critical('Run time: %.2f seconds', (time.time() - start_time))
-        return None
+
+        results = self.output_results()
+        
+        return results
     
-
-    def finalise(self):
-        """input: None
-        output: None
-        prints values, scores, ect. at end
-        """
-
+    
+    def output_results(self):
+    
         (best_gene, best_gene_data) = self.algorithm.get_final()
-        self.algorithm.finalise()
         
         if len(best_gene) > 0:
             # Protect against an exception before there are any params
@@ -203,9 +218,6 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             results = None
 
         pickle_dict = {}
-        # round the total cost to simplify regression comparison
-        for i in range(len(best_gene_data)):
-            best_gene_data[i][1] = round(best_gene_data[i][1], 0)
         pickle_dict['best_gene_data'] = best_gene_data
         pickle_dict['best_gene'] = best_gene
 
@@ -215,7 +227,7 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
     
         pickle_dict['best_results'] = results
         pickle_dict['ts_demand'] = self.data.get_timeseries('ts_demand')
-
+    
         if self.config['do_plots']:
             mureiloutput.plot_timeseries(results['output'], 
                 self.data.get_timeseries('ts_demand'))
@@ -240,10 +252,23 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             output_file = path.join(path.dirname(__file__), '..', output_file)
             with open(output_file, 'w') as f:
                 json.dump(pickle_dict, f, cls=NumpyAwareJSONEncoder)
-                
+    
+        return results
+        
+
+    def finalise(self):
+        self.algorithm.finalise()
+
             
     def calc_cost(self, gene, save_result=False):
-
+        """Calculate the total system cost for this gene. This function is called
+        by the algorithm from a callback. The algorithm may set up multi-processing
+        and so this calc_cost function (and all functions it calls) must be
+        thread-safe when save_result=False. 
+        This means that the function must not modify any of the 
+        internal data of the objects. 
+        """
+        
         params = np.array(gene)
 
         if self.config['optim_type'] == 'match_demand':

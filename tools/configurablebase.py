@@ -58,6 +58,13 @@ class ConfigurableBase(mureilbase.ConfigurableInterface):
         self.complete_configuration()
         
 
+    def update_config(self, new_config):
+        """Update the current config values with new_config, for all parameters
+        in new_config.
+        """
+        self.config.update(new_config)
+
+
     def load_initial_config(self, config, global_config=None):
         config_spec = self.config_spec
         config_copy = copy.deepcopy(config)

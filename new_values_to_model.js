@@ -6,7 +6,7 @@
                 "type": "coal",
                 "lat": -38.42,
                 "long": 144.17,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 150
             },
@@ -15,8 +15,8 @@
                 "type": "coal",
                 "lat": -38.27,
                 "long": 146.55,
-                "decade": 2010,
-                "decomission": 2050,
+                "decade": 2000,
+                "decomission": 2020,
                 "capacity": 2210
             },
             {
@@ -24,7 +24,7 @@
                 "type": "coal",
                 "lat": -38.23,
                 "long": 146.4,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 162
             },
@@ -33,7 +33,7 @@
                 "type": "coal",
                 "lat": -38.23,
                 "long": 146.4,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 1600
             },
@@ -42,7 +42,7 @@
                 "type": "coal",
                 "lat": -38.18,
                 "long": 146.53,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 1000
             },
@@ -51,7 +51,7 @@
                 "type": "coal",
                 "lat": -38.18,
                 "long": 146.33,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 1480
             },
@@ -60,7 +60,7 @@
                 "type": "gas",
                 "lat": -38.23,
                 "long": 146.4,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 432
             },
@@ -69,7 +69,7 @@
                 "type": "gas",
                 "lat": -38.18,
                 "long": 146.53,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 50
             },
@@ -78,7 +78,7 @@
                 "type": "gas",
                 "lat": -38.08,
                 "long": 142.82,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 566
             },
@@ -87,7 +87,7 @@
                 "type": "gas",
                 "lat": -37.85,
                 "long": 144.88,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 500
             },
@@ -96,7 +96,7 @@
                 "type": "gas",
                 "lat": -37.85,
                 "long": 144.75,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 156
             },
@@ -105,7 +105,7 @@
                 "type": "gas",
                 "lat": -37.83,
                 "long": 147.61,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 94
             },
@@ -114,7 +114,7 @@
                 "type": "gas",
                 "lat": -37.65,
                 "long": 144.93,
-                "decade": 2010,
+                "decade": 2000,
                 "decomission": 2050,
                 "capacity": 40
             },
@@ -261,6 +261,24 @@
                 "decade": 2010,
                 "decomission": 2050,
                 "capacity": 192
+            },
+            {
+                "id": "wind_9",
+                "type": "wind",
+                "lat": -37.37,
+                "long": 143.62,
+                "decade": 2040,
+                "decomission": 2050,
+                "capacity": 2000
+            },
+            {
+                "id": "solar_1",
+                "type": "solar",
+                "lat": -37.37,
+                "long": 143.62,
+                "decade": 2040,
+                "decomission": 2060,
+                "capacity": 6000
             }
         ],
         "demand": {

@@ -1,6 +1,6 @@
 README - simple instructions on how to run MUREIL
 Marcelle Gannon marcelle.gannon@gmail.com
-20 Dec 2012
+11 Feb 2013
 
 ----------
 Pre-configured example
@@ -55,13 +55,21 @@ The 'simplemureilmaster.py' master does the following calculations on the global
 	values are there.
 
 See the function 'get_config_spec' in each model's code to see the variables they expect.
+You can run 
+> python get_config_spec_help.py
+to collect all the get_config_spec output into one place. It will be written to
+get_config_spec_help.txt.
+
 
 -------------
 Data
 -------------
 
-Use of the data/ncdatasingle.py and ncdatamulti.py models is recommended. Note that the 
-SinglePassVariableGenerator model assumes the data is read in as capacity factor fractions.
+Use of the data/ncdata.py model is recommended. This allows you to configure which data series
+come from which NetCDF format file, checks they are all the right length, and removes
+NaNs.
+
+Note that the SinglePassVariableGenerator model assumes the data is read in as capacity factor fractions.
 
 -------------
 Batch script
@@ -109,6 +117,9 @@ python test.py -v
 
 and expect it to finish with 'ok'.
 
+From the mureil-ga directory, run:
+python -m unittest discover -v
+and you should see all of the current tests run.
 
 --------------
 Profiling
@@ -218,3 +229,29 @@ array([ 500.,  500.,  500.])
 x': 1.0, 'type': 'bc', 'timestep_hrs': 1.0, 'variable_cost_mult': 1.0}
 >>> print t.ts_demand
 [1 2 3]
+
+--------------------------
+GE demo
+--------------------------
+
+The GE demo is run from model_web.py if you are a webserver, and
+model_file.py if you want to test it locally. model_file.py sets up
+a couple of parameters and then calls rungedemo.py. 
+
+--------------------------
+Initialising the Gene values
+--------------------------
+
+The initial gene values can be constrained within a smaller range
+than the specified min/max by setting (in the singlepassvariablegenerator
+models only) the 'start_min_param' and 'start_max_param' configuration
+parameters. 
+
+To initialise the whole population to identical gene values, read from
+a file, see runmureil_gene.py. Run as follows:
+
+> python runmureil_gene.py test.pkl
+
+where test.pkl has been saved from a previous run (or you have created it),
+so it contains a dict with 'best_gene' as a member.
+
