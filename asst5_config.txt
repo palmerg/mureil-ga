@@ -4,7 +4,7 @@
 [Master]
 model: master.simplemureilmaster.SimpleMureilMaster
 global: Global
-iterations: 10
+iterations: 1000
 output_file: asst5.pkl
 algorithm: Algorithm
 solar: Solar
