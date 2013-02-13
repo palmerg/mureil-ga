@@ -80,7 +80,7 @@ class VariableGeneratorBasic(singlepassgenerator.SinglePassGeneratorBase):
             data: dict - with keys matching those requested by
                 get_data_types. 
         """
-        self.ts_cap_fac = data[self.config['data_type']]
+        self.ts_cap_fac = numpy.array(data[self.config['data_type']],dtype=float)
         
         
     def get_param_count(self):
@@ -345,8 +345,9 @@ class VariableGeneratorAsymptCost(VariableGeneratorBasic):
         output = numpy.dot(self.ts_cap_fac, clipped) * self.config['size']
 
         cost_temp = numpy.zeros(params.size)
-       
-        alpha=0.2
+
+        alpha_dict={'ts_solar':5.0,'ts_wind':1.8}
+        alpha=alpha_dict[self.config['data_type']]
         a=self.config['capex'] * self.config['size']
 
         for i in range(params.size):
@@ -545,6 +546,7 @@ class VariableGeneratorAsymptCost(VariableGeneratorBasic):
         active_sites=params>0
         distances=distance_dict[self.config['data_type']]
         distances=numpy.asarray(distances)
+        distances=distances/1000.0 #Get it into units of $M/km
         cost_distance=distances[active_sites == True].sum()
 
         cost+=cost_distance
