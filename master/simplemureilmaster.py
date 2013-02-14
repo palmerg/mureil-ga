@@ -189,27 +189,31 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
     
         logger.critical('Run time: %.2f seconds', (time.time() - start_time))
 
-        results = self.output_results()
+        results = self.output_results(final=True)
         
         return results
     
     
-    def output_results(self):
+    def output_results(self, final=False):
     
         (best_gene, best_gene_data) = self.algorithm.get_final()
         
         if len(best_gene) > 0:
             # Protect against an exception before there are any params
             results = self.evaluate_results(best_gene)
+
+            if 'demand' in self.dispatch_order:
+                ts_demand = results['other']['demand']['ts_demand']
+            else:
+                ts_demand = self.data.get_timeseries('ts_demand')
                 
             # and print out the text strings, accompanied by the costs
             strings = results['gen_desc']
             costs = results['cost']
             total_cost = 0.0
-            for i in range(len(strings)):
-                gen = strings[i][0]
-                info = strings[i][1]
-                cost = costs[i][1]
+            for gen in results['cost'].iterkeys():
+                info = strings[gen]
+                cost = costs[gen]
                 total_cost += cost
                 logger.info(gen + ' ($M {:.2f}) : '.format(cost) + info)
     
@@ -226,33 +230,15 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         pickle_dict['config'] = full_conf
     
         pickle_dict['best_results'] = results
-        pickle_dict['ts_demand'] = self.data.get_timeseries('ts_demand')
+        pickle_dict['ts_demand'] = ts_demand
     
         if self.config['do_plots']:
             mureiloutput.plot_timeseries(results['output'], 
-                self.data.get_timeseries('ts_demand'))
+                ts_demand, final)
 
         output_file = self.config['output_file']
-        output_type = 'json' if output_file.endswith('json') else 'pickle' 
-        
-        if output_type == 'pickle':
-            mureiloutput.pickle_out(pickle_dict, output_file)
-        
-        elif output_type in ('json', 'js'):
-            
-            import json
-            import numpy
-
-            class NumpyAwareJSONEncoder(json.JSONEncoder):
-                def default(self, obj):
-                    if isinstance(obj, numpy.ndarray) and obj.ndim == 1:
-                        return [x for x in obj]
-                    return json.JSONEncoder.default(self, obj)
-            
-            output_file = path.join(path.dirname(__file__), '..', output_file)
-            with open(output_file, 'w') as f:
-                json.dump(pickle_dict, f, cls=NumpyAwareJSONEncoder)
-    
+        mureiloutput.pickle_out(pickle_dict, output_file)
+  
         return results
         
 
@@ -289,8 +275,10 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         elif self.config['optim_type'] == 'missed_supply':
 
             # rem_demand is the running total, modified here
-            rem_demand = np.array(self.data.get_timeseries('ts_demand'), dtype=float)
-            mureiltypes.check_ndarray_float(rem_demand)            
+            if 'demand' in self.dispatch_order:
+                rem_demand = np.zeros(self.data.get_ts_length(), dtype=float)
+            else:
+                rem_demand = np.array(self.data.get_timeseries('ts_demand'), dtype=float)
             
             cost = 0
 
@@ -316,29 +304,29 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
             
         Outputs:
             results: a dict containing:
-                gen_desc: list of tuples of (gen_type, desc) 
+                gen_desc: dict of gen_type: desc 
                     desc are strings describing
                     the generator type and the capacity or other parameters.
-                cost: list of tuples of (gen_type, cost)
-                output: list of tuples of (gen_type, output)
-                other: list of tuples of (gen_type, other saved data)
+                cost: dict of gen_type: cost
+                output: dict of gen_type: output
+                other: dict of gen_type: other saved data
         """
         
         # First evaluate with these parameters
         self.calc_cost(params, save_result=True)
         
         results = {}
-        results['gen_desc'] = []
+        results['gen_desc'] = {}
         for val_type in ['capacity', 'cost', 'output', 'other']:
-            results[val_type] = []
+            results[val_type] = {}
 
         for gen_type in self.dispatch_order:
             gen = self.gen_list[gen_type]
-            results['gen_desc'].append((gen_type, gen.interpret_to_string()))
+            results['gen_desc'][gen_type] = gen.interpret_to_string()
 
             saved_result = gen.get_saved_result()
             for val_type in ['capacity', 'cost', 'output', 'other']:
-                results[val_type].append((gen_type, saved_result[val_type]))
+                results[val_type][gen_type] = saved_result[val_type]
 
         return results
         

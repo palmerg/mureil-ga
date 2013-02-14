@@ -185,7 +185,7 @@ class VicTempDemand(singlepassgenerator.SinglePassGeneratorBase):
             self.saved['output'] = output
             self.saved['cost'] = cost
             self.saved['capacity'] = max(model_pred)
-            self.saved['other'] = {'ts_demand': output}
+            self.saved['other'] = {'ts_demand': -1 * output}
         
         return cost, output
 

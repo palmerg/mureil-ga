@@ -87,7 +87,7 @@ class SinglePassGeneratorBase(configurablebase.ConfigurableBase):
             max_start_list: list of param integers, or []
         """
     
-        return []
+        return [], []
         
     
     def calculate_cost_and_output(self, params, rem_demand, save_result=False):

@@ -99,22 +99,25 @@ def compare_pickles(filename_1, filename_2):
     return pickle_equal, pickle_1, pickle_2
 
 
-def plot_timeseries(output, demand):
+def plot_timeseries(output, demand, hold=True):
     """Plot a timeseries of the output of the different generators.
     The parameter 'output' is a list of tuples of (name, timeseries).
     """
     import pylab
     
-    ts = range(len(output[0][1]))
+    ts = range(len(output[output.keys()[0]]))
     
     pylab.figure()
     pylab.plot(ts, demand, label='demand', linewidth=2)
 
     cuml = numpy.zeros(len(ts), dtype=float)
     
-    for pair in output:
-        cuml += pair[1]
-        pylab.plot(ts, cuml, label=pair[0])
+    for gen, value in output.iteritems():
+        # This is a special case - don't plot 'demand' if it is a generator,
+        # as it will plot as all negatives.
+        if not gen == 'demand':
+            cuml += value
+            pylab.plot(ts, cuml, label=gen)
 
     pylab.legend()        
     pylab.title('Cumulative power')
@@ -122,13 +125,16 @@ def plot_timeseries(output, demand):
     pylab.figure()
     pylab.plot(ts, demand, label='demand', linewidth=2)
 
-    for pair in output:
-        pylab.plot(ts, pair[1], label=pair[0])
+    for gen, value in output.iteritems():
+        # This is a special case - don't plot 'demand' if it is a generator,
+        # as it will plot as all negatives.
+        if not gen == 'demand':
+            pylab.plot(ts, value, label=gen)
 
     pylab.legend()        
     pylab.title('Non-cumulative power')
 
-    pylab.show(False)
+    pylab.show(hold)
 
 
 def plot_pickle(filename):

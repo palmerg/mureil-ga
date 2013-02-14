@@ -166,7 +166,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             year_out['co2_tonnes'] = 0.0
             
             # Total demand, in MWh per annum
-            for generator_type, value in results['other']:
+            for generator_type, value in results['other'].iteritems():
                 if value is not None:
                     if 'ts_demand' in value:
                         year_out['demand'] = '{:.2f}'.format(
@@ -174,15 +174,15 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
                             output_multiplier)
        
             # Total output, in MWh per annum
-            for generator_type, values in results['output']:
-                output_section[generator_type] = '{:.2f}'.format(
-                    sum(values) * self.global_config['timestep_hrs'] *
+            for gen_type, vals in results['output'].iteritems():
+                output_section[gen_type] = '{:.2f}'.format(
+                    sum(vals) * self.global_config['timestep_hrs'] *
                     output_multiplier)
     
             # Total cost, per decade
             this_period_cost = 0.0
-            for generator_type, value in results['cost']:
-                cost_section[generator_type] = value
+            for gen_type, value in results['cost'].iteritems():
+                cost_section[gen_type] = value
                 this_period_cost += value
 # or as a string:
 #                cost_section[generator_type] = '{:.2f}'.format(value)
@@ -195,7 +195,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
                 (self.global_config['time_period_yrs'] * year_index))
             year_out['discounted_cumulative_cost'] = cuml_cost
     
-            for generator_type, value in results['other']:
+            for gen_type, value in results['other'].iteritems():
                 if value is not None:
                     if 'reliability' in value:
                         year_out['reliability'] = value['reliability']
@@ -333,12 +333,12 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             
         Outputs:
             results: a dict containing:
-                gen_desc: list of tuples of (gen_type, desc) 
+                gen_desc: dict of gen_type: desc 
                     desc are strings describing
                     the generator type and the capacity or other parameters.
-                cost: list of tuples of (gen_type, cost)
-                output: list of tuples of (gen_type, output)
-                other: list of tuples of (gen_type, other saved data)
+                cost: dict of gen_type: cost
+                output: dict of gen_type: output
+                other: dict of gen_type: other saved data
         """
         
         year = self.config['year_list'][year_index]
@@ -360,21 +360,16 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         self.calc_cost(ts_demand, total_params, inc_params, save_result=True)
         
         results = {}
-        results['gen_desc'] = []
-        results['cost'] = []
-        results['output'] = []
-        results['capacity'] = []
-        results['other'] = []
+        for res_type in ['gen_desc', 'cost', 'output', 'capacity', 'other']:
+            results[res_type] = {}
         
         for gen_type in self.dispatch_order:
             gen = self.gen_list[gen_type]
-            results['gen_desc'].append((gen_type, gen.interpret_to_string()))
+            results['gen_desc'][gen_type] = gen.interpret_to_string()
 
             saved_result = gen.get_saved_result()
-            results['capacity'].append((gen_type, saved_result['capacity']))
-            results['cost'].append((gen_type, saved_result['cost']))
-            results['output'].append((gen_type, saved_result['output']))
-            results['other'].append((gen_type, saved_result['other']))
+            for res_type in ['capacity', 'cost', 'output', 'other']:
+                results[res_type][gen_type] = saved_result[res_type]
 
         return results
         
