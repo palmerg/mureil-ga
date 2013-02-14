@@ -105,9 +105,41 @@ class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
             output: numpy.array - Power generated at each timestep, or
                 negative if power consumed.
         """
+        output = self.compute_pumped_hydro_ts(rem_demand, self.config['max_gen'])
+
+        hydro_max = np.max(np.abs(output))
+        cost = hydro_max * self.config['capex']
+        
+        if save_result:
+            self.saved['capacity'] = hydro_max
+            self.saved['output'] = np.copy(output)
+            self.saved['cost'] = cost
+         
+        return cost, output
+
+
+    def interpret_to_string(self):
+        if self.saved:
+            return 'Basic Pumped Hydro, maximum generation capacity (MW) {:.2f}'.format(
+                self.saved['capacity'])
+        else:
+            return None
+   
+
+    def compute_pumped_hydro_ts(self, rem_demand, max_gen):
+        """Compute the timeseries for the pumped hydro operation.
+        
+        Inputs:
+            rem_demand: timeseries of demand in MW remaining to be met, or surplus if negative
+            max_gen: maximum electrical generation capacity
+        
+        Output:
+            output: timeseries in MW of output of generator
+        """
+        
         output = np.zeros(len(rem_demand))
         elec_res_temp = self.elec_res
-        gen = self.config['max_gen']
+        gen = max_gen
         elec_cap = self.elec_cap
         pump_round_trip = self.config['pump_round_trip']
         pump_round_trip_recip = self.pump_round_trip_recip
@@ -137,11 +169,63 @@ class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
                 elec_used = elec_to_store * pump_round_trip_recip
                 output[i] = -elec_used
 
-        hydro_max = np.max(np.abs(output))
-        cost = hydro_max * self.config['capex']
+        return output
+        
+
+class BasicPumpedHydroOptimisable(BasicPumpedHydro):
+    """Models a variant of BasicPumpedHydro where the maximum electrical capacity
+    is an optimisation parameter.
+    """
+
+    def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration:
+            as for BasicPumpedHydro, with the addition of:
+                size: multiplier to translate param to electrical capacity, default 1
+            
+            and with the removal of:
+                max_gen
+        """
+        
+        spec = BasicPumpedHydro.get_config_spec(self)
+        spec += [('size', float, 1)]
+        
+        loc = 0
+        for i in range(len(spec)):
+            if (spec[i][0] == 'max_gen'):
+                loc = i
+        del spec[loc]
+        
+        return spec
+        
+        
+    def calculate_cost_and_output(self, params, rem_demand, save_result=False):
+        """Calculate the time series of electricity in and out for the
+        pumped hydro.
+        
+        Input parameters:
+            params: a single param, specifying generation capacity. Generation
+                capacity is calculated as config['size'] * params[0].
+            rem_demand: numpy.array - a time series of the demand remaining
+                to be met. May have negatives indicating excess power available.
+            save_result: boolean, default False - if set, save the results
+                from these params and rem_demand into the self.saved dict.
+        
+        Returns:
+            cost: number - capex for maximum generator capacity used 
+            output: numpy.array - Power generated at each timestep, or
+                negative if power consumed.
+        """
+        capacity = params[0] * self.config['size']
+        output = self.compute_pumped_hydro_ts(rem_demand, capacity)
+
+        cost = capacity * self.config['capex']
         
         if save_result:
-            self.saved['capacity'] = hydro_max
+            self.saved['capacity'] = capacity
             self.saved['output'] = np.copy(output)
             self.saved['cost'] = cost
          
@@ -150,8 +234,16 @@ class BasicPumpedHydro(singlepassgenerator.SinglePassGeneratorBase):
 
     def interpret_to_string(self):
         if self.saved:
-            return 'Basic Pumped Hydro, maximum generation capacity (MW) {:.2f}'.format(
+            return 'Basic Pumped Hydro Optimisable, maximum generation capacity (MW) {:.2f}'.format(
                 self.saved['capacity'])
         else:
             return None
-            
+   
+
+    def get_param_count(self):
+        """Ask for 1 parameter to specify the electrical capacity to build.
+        """
+        return 1
+   
+    
+        
