@@ -36,7 +36,10 @@ def get_global_spec():
         ('time_period_yrs', float, None),
         ('timestep_hrs', float, None),
         ('min_param_val', float, None),
-        ('max_param_val', float, None)]
+        ('max_param_val', float, None),
+        ('time_scale_up_mult', float, None),
+        ('variable_cost_mult', float, None),
+        ('data_ts_length', int, None)]
         
 
 def pre_data_global_calcs(global_conf):
@@ -54,14 +57,18 @@ def post_data_global_calcs(global_conf):
     """Update global_conf now that data length is known. Compute the variable_cost_mult parameter.
     """
 
+    # time_scale_up_mult extrapolates calculations from a dataset along the full time period.
+    if 'time_scale_up_mult' not in global_conf:
+        if 'time_period_yrs' in global_conf and 'timestep_hrs' in global_conf:
+            yrs_of_data = ((global_conf['timestep_hrs'] * float(global_conf['data_ts_length'])) /
+                (365.25 * 24))
+            global_conf['time_scale_up_mult'] = (global_conf['time_period_yrs'] /
+                yrs_of_data)
+
     # Need to know the data length to compute variable_cost_mult - to extrapolate the variable
     # cost along the whole time period being modelled. Some NPV discounting could also be
     # incorporated with a discount rate parameter.
     if 'variable_cost_mult' not in global_conf:
-        if 'time_period_yrs' in global_conf and 'timestep_hrs' in global_conf:
-            yrs_of_data = ((global_conf['timestep_hrs'] * float(global_conf['data_ts_length'])) /
-                (365.25 * 24))
-            global_conf['variable_cost_mult'] = (global_conf['time_period_yrs'] /
-                yrs_of_data)
+        global_conf['variable_cost_mult'] = global_conf['time_scale_up_mult']
 
 

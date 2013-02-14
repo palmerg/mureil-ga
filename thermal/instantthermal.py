@@ -122,6 +122,7 @@ class InstantOptimisableThermal(singlepassgenerator.SinglePassGeneratorBase):
             ('carbon_intensity', float, None),
             ('timestep_hrs', float, None),
             ('variable_cost_mult', float, None),
+            ('time_scale_up_mult', float, None),
             ('size', float, 100)
             ]
 
@@ -197,16 +198,25 @@ class IncrementalInstantOptimisableThermal(InstantOptimisableThermal):
         max_cap = params[0] * self.config['size']
         # numpy.clip sets lower and upper bounds on array values
         output = rem_demand.clip(0, max_cap)
-        variable_cost = numpy.sum(output) * self.config['timestep_hrs'] * (
-            self.config['fuel_price_mwh'] + (
-            self.config['carbon_price'] * self.config['carbon_intensity'])) / 1e6
-        cost = variable_cost * self.config['variable_cost_mult'] + (
+        output_mwh = numpy.sum(output) * self.config['timestep_hrs']
+
+        # in tonnes
+        carbon_output = (output_mwh * self.config['carbon_intensity'] * 
+            self.config['time_scale_up_mult'])
+
+        # divide by 1e6 as carbon price and fuel price are in $/mwh and we need $M/mwh
+        carbon_cost = (self.config['carbon_price'] * self.config['carbon_intensity'] * 
+            output_mwh) / 1e6
+        fuel_cost = output_mwh * self.config['fuel_price_mwh'] / 1e6
+                
+        cost = (carbon_cost + fuel_cost) * self.config['variable_cost_mult'] + (
             self.config['capex'] * (params[1] * self.config['size']))
         
         if save_result:
             self.saved['capacity'] = max_cap
             self.saved['cost'] = cost
             self.saved['output'] = numpy.copy(output)
+            self.saved['other'] = {'carbon': carbon_output}
  
         return cost, output
          
