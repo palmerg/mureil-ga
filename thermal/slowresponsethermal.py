@@ -73,12 +73,14 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
     def get_data_types(self):
         """The demand timeseries is supplied for use in forecasting the required demand.
         """
+        
         return ['ts_demand']
 
         
     def set_data(self, data):
         """The demand timeseries is supplied for use in forecasting the required demand.
         """
+        
         self.ts_demand = data['ts_demand']
         mureiltypes.check_ndarray_float(self.ts_demand)
     
@@ -101,19 +103,48 @@ class SlowResponseThermal(singlepassgenerator.SinglePassGeneratorBase):
  
         capacity = params[0] * self.config['size']
         # numpy.clip sets lower and upper bounds on array values
-        #output = rem_demand.clip(0, max_cap)
-        output = numpy.ones(len(rem_demand), dtype=float) * capacity
- 
+        # output = rem_demand.clip(0, max_cap)
+
+   
+        # output = numpy.ones(len(rem_demand), dtype=float) * capacity
+        output = numpy.zeros(len(rem_demand))
+
+        ###################################################################
+
         # Now write code to decide when to turn it on! 'rem_demand' is demand at this point in the 
         # dispatch hierarchy, and 'self.ts_demand' is the total demand. Put the result into
         # 'output'. Parameter 'self.config['ramp_time_mins']' is available, representing the ramp
         # time to full power in minutes.
- 
+
         ts_demand = self.ts_demand
         avail_demand = copy.deepcopy(rem_demand)
         ramp_time_mins = self.config['ramp_time_mins']
- 
-        # TODO - precalculate the functions of config in set_config for improved speed
+
+        therm_out = 0 # initial thermal output assumed zero
+        max_grad = capacity/(ramp_time_mins/60) # max response gradient
+          
+        max_inc = max_grad * self.config['timestep_hrs'] # max inc/dec based on ramp
+
+        for i in range(len(rem_demand)):
+            des_inc = rem_demand[i] - therm_out # desired increase to meet rem_demand if no ramp limit
+            if abs(des_inc) <= max_inc: # if the inc/dec in demand is less than max ramp
+                therm_out =  therm_out + des_inc 
+            else:  # the inc/dec in demand is greater than max ramp
+                therm_out = therm_out + max_inc * cmp(des_inc,0)
+               
+
+            if therm_out > capacity: # if calc ramped output greater than capacity 
+                therm_out = capacity # limit to max capacity
+            if therm_out < 0: # if calc ramped output less than zero
+                therm_out = 0 # limit to  zero
+
+
+            output[i] = therm_out
+
+
+
+         # TODO - precalculate the functions of config in set_config for improved speed
+         
         variable_cost = numpy.sum(output) * self.config['timestep_hrs'] * (
             self.config['fuel_price_mwh'] + (
             self.config['carbon_price'] * self.config['carbon_intensity'])) / 1e6

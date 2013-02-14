@@ -39,8 +39,10 @@ import os
 
 import unittest
 import numpy as np
+import tools.mureilexception as mureilexception
+import tools.mureilbuilder as mureilbuilder
 
-from tools import mureilexception, testutilities
+from tools import testutilities
 
 import thermal.slowresponsethermal
 
@@ -53,7 +55,7 @@ class TestSlowResponseThermal(unittest.TestCase):
         os.chdir(self.cwd)
 
     def test_simple(self):
-        config = {
+        """ config = {
             'capex': 3.0,
             'fuel_price_mwh': 10,
             'carbon_price': 5,
@@ -63,27 +65,57 @@ class TestSlowResponseThermal(unittest.TestCase):
             'ramp_time_mins': 240,
             'type': 'BlackCoal'
         }
-
-        ts_demand = {'ts_demand': np.array([110, 120, 130, 140, 140, 140, 140, 130, 120, 110], dtype=float)}
-        rem_demand = np.array([10, 20, 30, 40, 40, 40, 40, 30, 20, 10], dtype=float)
+        """
+        
+        test_file = "test1.csv"
+        config_arr = np.genfromtxt(test_file, delimiter = ',',  usecols = (0))
+        config = {
+            'capex': config_arr[0],
+            'fuel_price_mwh': config_arr[1],
+            'carbon_price': config_arr[2],
+            'carbon_intensity': config_arr[3],
+            'timestep_hrs': config_arr[4],
+            'variable_cost_mult': config_arr[5],
+            'ramp_time_mins': config_arr[6],
+            'type': 'BlackCoal'
+        }
+             
+        
+        # rem_demand = np.array([10, 20, 30, 40, 40, 40, 40, 30, 20, 10])  
+        rem_demand = np.genfromtxt(test_file, delimiter = ',',  usecols = (1))
+          
+             
+        #ts_demand1 = {'ts_demand': np.array([110, 120, 130, 140, 140, 140, 140, 130, 120, 110])}     
+        ts_demand = {'ts_demand': np.ones(len(rem_demand))*10000} # dummy demand
         
         # for original no-code version, just output at full capacity all the time
         # will test here with capacity = 500MW
-        exp_ts = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500], dtype=float)
-        exp_cost = (10 * 500 * (10 + 5)) * 1e-6 + (3 * 500)
+        #exp_ts = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500])
+        
+        exp_ts = np.genfromtxt(test_file, delimiter = ',',  usecols = (2))
+
+        # exp_cost = (10 * 500 * (10 + 5)) * 1e-6 + (3 * 500)
+        exp_cost = config_arr[9]
+
+        print 'rem_demand', rem_demand
+        print 'ts_demand', ts_demand
+        print 'exp_ts', exp_ts
+        print 'exp_cost', exp_cost
+
+        
         
         try:
             self.thermal.set_config(config)
             self.thermal.set_data(ts_demand)
             # param is multiplied by 100 to give capacity in MW, so '5' is used here.
             (out_cost, out_ts) = self.thermal.calculate_cost_and_output([5], rem_demand)
-            print out_cost
-            print out_ts
+            print 'out_cost', out_cost
+            print 'out_ts', out_ts
         except mureilexception.MureilException as me:
             print me.msg
             self.assertEqual(False, True)    
         
-        # The tolist thing is so that the numpy array (which basicpumpedhydro
+        # The tolist thing is so that the numpy array (which test_slowresponsethermal
         # expects) gets turned into a list, which is what unittest expects.
 
         self.assertListEqual(out_ts.tolist(), exp_ts.tolist())
@@ -99,7 +131,7 @@ class TestSlowResponseThermalFixed(unittest.TestCase):
         os.chdir(self.cwd)
 
     def test_simple(self):
-        config = {
+        """ config = {
             'capex': 3.0,
             'fuel_price_mwh': 10,
             'carbon_price': 5,
@@ -110,21 +142,49 @@ class TestSlowResponseThermalFixed(unittest.TestCase):
             'type': 'BlackCoal',
             'fixed_capacity': 1200
         }
+        """
 
-        ts_demand = {'ts_demand': np.array([110, 120, 130, 140, 140, 140, 140, 130, 120, 110], dtype=float)}
-        rem_demand = np.array([10, 20, 30, 40, 40, 40, 40, 30, 20, 10], dtype=float)
-        
+        test_file = "test2.csv"
+        config_arr = np.genfromtxt(test_file, delimiter = ',',  usecols = (0))
+        config = {
+            'capex': config_arr[0],
+            'fuel_price_mwh': config_arr[1],
+            'carbon_price': config_arr[2],
+            'carbon_intensity': config_arr[3],
+            'timestep_hrs': config_arr[4],
+            'variable_cost_mult': config_arr[5],
+            'ramp_time_mins': config_arr[6],
+            'type': 'BlackCoal',
+            'fixed_capacity': 1200
+        }
+            
+
+          
+        #rem_demand = np.array([10, 20, 30, 40, 40, 40, 40, 30, 20, 10])
+        rem_demand = np.genfromtxt(test_file, delimiter = ',',  usecols = (1))
+
+        #ts_demand = {'ts_demand': np.array([110, 120, 130, 140, 140, 140, 140, 130, 120, 110])}
+        ts_demand = {'ts_demand': np.ones(len(rem_demand))*10000} # dummy demand
+            
         # for original no-code version, just output at full capacity all the time
         # will test here with capacity = 1200 MW
-        exp_ts = np.array([1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200], dtype=float)
-        exp_cost = (10 * 1200 * (10 + 5)) * 1e-6 + (3 * 1200)
-        
+        #exp_ts = np.array([1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200])
+        exp_ts = np.genfromtxt(test_file, delimiter = ',',  usecols = (2))
+            
+        #exp_cost = (10 * 1200 * (10 + 5)) * 1e-6 + (3 * 1200)
+        exp_cost = config_arr[9]
+
+        print 'rem_demand', rem_demand
+        print 'ts_demand', ts_demand
+        print 'exp_ts', exp_ts
+        print 'exp_cost', exp_cost
+      
         try:
             self.thermal.set_config(config)
             self.thermal.set_data(ts_demand)
             (out_cost, out_ts) = self.thermal.calculate_cost_and_output([], rem_demand)
-            print out_cost
-            print out_ts
+            print 'out_cost', out_cost
+            print 'out_ts', out_ts
         except mureilexception.MureilException as me:
             print me.msg
             self.assertEqual(False, True)    
