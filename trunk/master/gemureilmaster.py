@@ -119,7 +119,8 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             ('dispatch_order', mureilbuilder.make_string_list, None),
             ('do_plots', mureilbuilder.string_to_bool, False),
             ('year_list', mureilbuilder.make_string_list, None),
-            ('carbon_price_list', mureilbuilder.make_int_list, None)
+            ('carbon_price_list', mureilbuilder.make_int_list, None),
+            ('discount_rate', float, 0.0)
             ]
 
 
@@ -137,6 +138,8 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         # Compute an annual total for generation
         output_multiplier = (self.global_config['variable_cost_mult'] /
             self.global_config['time_period_yrs'])
+
+        cuml_cost = 0.0
 
         for year_index in range(len(self.config['year_list'])):
             
@@ -159,6 +162,9 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             # Cost, in $M
             year_out['cost'] = cost_section = {}
             
+            # Total carbon emissions
+            year_out['co2_tonnes'] = 0.0
+            
             # Total demand, in MWh per annum
             for generator_type, value in results['other']:
                 if value is not None:
@@ -174,15 +180,27 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
                     output_multiplier)
     
             # Total cost, per decade
+            this_period_cost = 0.0
             for generator_type, value in results['cost']:
                 cost_section[generator_type] = value
+                this_period_cost += value
 # or as a string:
 #                cost_section[generator_type] = '{:.2f}'.format(value)
 
+            # Total cumulative cost, with discounting
+            # This assumes the costs are all incurred at the beginning of
+            # each period (a simplification)
+            year_out['period_cost'] = this_period_cost
+            cuml_cost += this_period_cost / ((1 + (self.config['discount_rate'] / 100)) **
+                (self.global_config['time_period_yrs'] * year_index))
+            year_out['discounted_cumulative_cost'] = cuml_cost
+    
             for generator_type, value in results['other']:
                 if value is not None:
                     if 'reliability' in value:
                         year_out['reliability'] = value['reliability']
+                    if 'carbon' in value:
+                        year_out['co2_tonnes'] += value['carbon']
 
             if 'reliability' not in year_out:
                 year_out['reliability'] = 100

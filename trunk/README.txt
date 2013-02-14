@@ -51,8 +51,10 @@ section are passed to all other models for their use. These may be overwritten b
 
 The 'simplemureilmaster.py' master does the following calculations on the global values:
 - creates timestep_mins from timestep_hrs and vice-versa
-- computes 'variable_cost_mult' from the length of the data set and 'time_period_yrs', if required
-	values are there.
+- computes 'time_scale_up_mult', to allow extrapolation from the data set length to the set
+	'time_period_yrs'. This is recommended for use with carbon emission calculations.
+- computes 'variable_cost_mult', at present just the same as time_scale_up_mult, but this could
+	have discounting added later.
 
 See the function 'get_config_spec' in each model's code to see the variables they expect.
 You can run 
