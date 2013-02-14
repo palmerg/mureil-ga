@@ -217,8 +217,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         
         generators = json.loads(json_data)['selections']['generators']
 
-        ## TODO - this isn't at all flexible, but will do for the first demo.
-        ## Only coal, gas, wind and solar are handled, and only one of each
+        ## Only coal, gas, wind and solar are handled, and only one of each.
         ## hydro is awaiting a rainfall-based model.
 
         self.total_params = {}
@@ -228,19 +227,33 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
         gen_inc_table = {}
         year_list = self.config['year_list']
 
+        gen_type_list = ['coal', 'gas', 'wind', 'solar']
+        gen_param_counts = {}
+
+        # Initialise the tables of capacity
+        for gen_type in gen_type_list:
+            gen_param_counts[gen_type] = self.gen_list[gen_type].get_param_count()
+            gen_total_table[gen_type] = numpy.zeros((len(self.config['year_list']),
+                gen_param_counts[gen_type]))                
+            gen_inc_table[gen_type] = numpy.zeros((len(self.config['year_list']),
+                gen_param_counts[gen_type]))                
+
+        # Fill in the tables of capacity
         for gen in generators:
-            if gen['type'] not in ['coal', 'gas', 'wind', 'solar']:
-                msg = 'Generator ' + str(gen['type']) + ' ignored'
+            gen_type = gen['type']
+            if gen_type not in gen_type_list:
+                msg = 'Generator ' + str(gen_type) + ' ignored'
                 logger.warning(msg)
             else:
-                if gen['type'] not in gen_total_table:
-                    new_total_table = numpy.zeros(len(self.config['year_list']))
-                    new_inc_table = numpy.zeros(len(self.config['year_list']))
-                    gen_total_table[gen['type']] = new_total_table
-                    gen_inc_table[gen['type']] = new_inc_table
+                this_total_table = gen_total_table[gen_type]
+                this_inc_table = gen_inc_table[gen_type]
 
-                this_total_table = gen_total_table[gen['type']]
-                this_inc_table = gen_inc_table[gen['type']]
+                loc_index = self.find_loc_index(gen)
+                if (loc_index >= gen_param_counts[gen_type]):
+                    msg = ('Generator ' + gen['id'] + ' looked up index as ' + str(loc_index) +
+                        ' but the ' + gen_type + ' has data for ' + str(gen_param_counts[gen_type]) +
+                        ' sites.')
+                    raise mureilexception.ConfigException(msg, {})
 
                 # build date could be specified as earlier, so capex is not paid.
                 build_index = numpy.where(numpy.array(year_list) == str(gen['decade']))
@@ -257,25 +270,27 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
 
                 # accumulate new capacity in the incremental list
                 if build_index >= 0:
-                    this_inc_table[build_index] += gen['capacity']                    
+                    this_inc_table[build_index][loc_index] += gen['capacity']                    
                 
                 # and add the new capacity to the total across all years until decommissioning
                 start_fill = build_index
                 if (build_index == -1):
                     start_fill = 0
                 for i in range(start_fill, decommission_index + 1):
-                    this_total_table[i] += gen['capacity']
+                    this_total_table[i][loc_index] += gen['capacity']
                     
+        # Convert the tables of capacity to params for the sim
         for i in range(0, len(year_list)):
-            this_total_params = numpy.zeros(4)
-            this_inc_params = numpy.zeros(4)
+            this_total_params = numpy.zeros(self.param_count)
+            this_inc_params = numpy.zeros(self.param_count)
             
             for gen_type in ['coal', 'wind', 'solar', 'gas']:
                 param_ptr = self.gen_params[gen_type]
-                # check if this generator takes any parameters at all before writing to it
                 if (param_ptr[0] < param_ptr[1]) and (gen_type in gen_total_table):
-                    this_total_params[param_ptr[0]] = gen_total_table[gen_type][i]
-                    this_inc_params[param_ptr[0]] = gen_inc_table[gen_type][i]
+                    this_total_params[param_ptr[0]:param_ptr[1]] = (
+                        gen_total_table[gen_type][i])
+                    this_inc_params[param_ptr[0]:param_ptr[1]] = (
+                        gen_inc_table[gen_type][i])
 
             self.total_params[str(year_list[i])] = this_total_params
             self.inc_params[str(year_list[i])] = this_inc_params
@@ -362,4 +377,13 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             results['other'].append((gen_type, saved_result['other']))
 
         return results
+        
+
+    def find_loc_index(self, gen):
+        """Use the location data in the generator info to choose which dataset to
+        apply. The result needs to be an index into the set of timeseries supplied for
+        that generator type. Must be 0 for the coal & gas.
+        """
+        
+        return 0
         
