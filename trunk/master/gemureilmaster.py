@@ -137,7 +137,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
 
         # Compute an annual total for generation
         output_multiplier = (self.global_config['variable_cost_mult'] /
-            self.global_config['time_period_yrs'])
+            float(self.global_config['time_period_yrs']))
 
         cuml_cost = 0.0
 
@@ -192,7 +192,7 @@ class GeMureilMaster(mureilbase.MasterInterface, configurablebase.ConfigurableBa
             # each period (a simplification)
             year_out['period_cost'] = this_period_cost
             cuml_cost += this_period_cost / ((1 + (self.config['discount_rate'] / 100)) **
-                (self.global_config['time_period_yrs'] * year_index))
+                (float(self.global_config['time_period_yrs']) * year_index))
             year_out['discounted_cumulative_cost'] = cuml_cost
     
             for gen_type, value in results['other'].iteritems():

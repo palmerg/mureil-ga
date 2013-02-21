@@ -358,7 +358,8 @@ def check_subclass(class_instance, baseclass):
             class_instance.__class__.__name__, baseclass.__name__, {}))
 
 
-def create_instance(full_config, global_config, section_name, baseclass):
+def create_instance(full_config, global_config, section_name, baseclass,
+    run_periods=None):
     """Create an instance of a model object, using section_name in the 
     full_config. Check that it is a subclass of the specified baseclass.
     Set the configuration of the object.
@@ -410,7 +411,7 @@ def create_instance(full_config, global_config, section_name, baseclass):
 
     # Initialise the model
     config['section'] = section_name
-    class_instance.set_config(config, global_config)
+    class_instance.set_config(config, global_config, run_periods)
 
     return class_instance
     
@@ -477,6 +478,21 @@ def create_master_instance(full_config, flags, extra_data):
     return class_instance
 
 
+def remove_config_spec(config_spec, param_name):
+    """Remove the tuple with named 'param_name' from the
+    config_spec, in-place.
+    
+    Inputs: 
+        config_spec: list of tuples of format (param_name, conversion_function, default)
+        param_name: string - name of parameter to remove
+    """
+    loc = 0
+    for i in range(len(config_spec)):
+        if (config_spec[i][0] == param_name):
+            loc = i
+    del config_spec[loc]
+        
+
 def collect_defaults(config_spec):
     """Extract the default values from config_spec as a dict of param_name:value.
 
@@ -496,6 +512,8 @@ def collect_defaults(config_spec):
 
 def apply_conversions(config, config_spec):
     """Apply the conversion functions listed in config_spec to the config dict, in-place.
+    If the value is a string, check if it starts with {, and if so, interpret it as
+    a period-by-period value - e.g. {2010:400, 2030:450}.
     
     Inputs:
         config: dict of param_name:value, where value may be a string.
@@ -507,10 +525,37 @@ def apply_conversions(config, config_spec):
         None. config is modified in-place.
     """
     
-    for config_tup in filter(lambda t: t[1] is not None, config_spec):
-        if config_tup[0] in config:
-            old_val = config[config_tup[0]]
-            config[config_tup[0]] = config_tup[1](old_val)
+    # Now convert, first checking for curly brackets to indicate multiple time periods
+    
+    for (conf_name, conv_fn, default) in config_spec:
+        if conf_name in config:
+            curr_val = config[conf_name]
+
+            if isinstance(curr_val, str):
+                # Multiple time periods is specified by {}, and separated by commas
+                curr_val = curr_val.strip()
+                if (len(curr_val) > 0) and (curr_val[0] == '{'):
+                    parse_str = curr_val[1:-1]
+                    config[conf_name] = new_val = {}
+                    vals = parse_str.split(',')
+                    for val in vals:
+                        (period, value) = val.split(':')
+                        if conv_fn is None:
+                            new_val[int(period)] = value.strip()
+                        else:
+                            new_val[int(period)] = conv_fn(value)
+                else:
+                    if conv_fn is not None:
+                        config[conf_name] = conv_fn(curr_val)
+            elif isinstance(curr_val, dict):
+                # This is already a dict - just re-apply the type conversions to be sure
+                for key, value in curr_val.iteritems():
+                    if conv_fn is not None:
+                        curr_val[key] = conv_fn(curr_val[key])
+            else:
+                # It's not a string - just make sure it's what we want
+                if conv_fn is not None:
+                    config[conf_name] = conv_fn(curr_val)
 
 
 def check_required_params(config, config_spec):
@@ -641,7 +686,7 @@ def string_to_bool(val):
     if type(val) == types.BooleanType:
         return val
     else:
-        return (val == 'True')
+        return (val.strip() == 'True')
     
     
 def supply_single_pass_data(gen, data, gen_type):

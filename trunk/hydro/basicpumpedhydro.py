@@ -29,7 +29,7 @@
 import numpy as np
 import logging
 
-from tools import mureilexception
+from tools import mureilexception, mureilbuilder
 from generator import singlepassgenerator
 
 logger = logging.getLogger(__name__)
@@ -192,13 +192,8 @@ class BasicPumpedHydroOptimisable(BasicPumpedHydro):
         
         spec = BasicPumpedHydro.get_config_spec(self)
         spec += [('size', float, 1)]
-        
-        loc = 0
-        for i in range(len(spec)):
-            if (spec[i][0] == 'max_gen'):
-                loc = i
-        del spec[loc]
-        
+        mureilbuilder.remove_config_spec(spec, 'max_gen')
+
         return spec
         
         
