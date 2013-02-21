@@ -29,7 +29,7 @@
    http://docs.python.org/2/library/unittest.html#
    
    To run it, at a command line:
-   python test_slowresponsethermal.py
+   python test_ncdata.py
 """
 
 import sys

@@ -38,7 +38,7 @@ class ConfigurableBase(mureilbase.ConfigurableInterface):
         self.is_configured = False
 
 
-    def set_config(self, config, global_config=None):
+    def set_config(self, config, global_config=None, run_periods=None):
         """Set the config to the values in config, with those in global_config
         also applied, using self.config_spec to apply defaults, convert parameters
         and check that all are present and none are extras.
@@ -136,4 +136,101 @@ class ConfigurableBase(mureilbase.ConfigurableInterface):
     
     def get_config_spec(self):
         return []
+        
+        
+class ConfigurableMultiBase(ConfigurableBase):
+    """ConfigurableMultiBase subclasses the ConfigurableBase class to add
+    functionality to handle multiple time periods.
+    """
+
+    def __init__(self):
+        ConfigurableBase.__init__(self)
+        self.extra_periods = []
+
+
+    def set_config(self, config, global_config=None, run_periods=None):
+        """Set the config to the values in config, with those in global_config
+        also applied, using self.config_spec to apply defaults, convert parameters
+        and check that all are present and none are extras.
+        
+        Calls, in turn:
+            load_initial_config (loads defaults, then applies config and global, check all required present)
+            process_initial_config (empty here - may determine extra parameters required and update the config_spec)
+            update_config_from_spec (process an updated config_spec)
+            check_config (check all parameters for existence, and that there are no extras)
+            complete_configuration_pre_expand (empty, for classes that do further processing)
+            expand_config (fill out the period_configs dict)
+            complete_configuration_post_expand (empty, for classes that do further processing)
+        """
+        
+        self.load_initial_config(config, global_config)
+        self.process_initial_config()
+        self.update_from_config_spec()
+        self.check_config()
+        self.complete_configuration_pre_expand()
+        self.run_periods = run_periods
+        self.expand_config(run_periods)
+        self.complete_configuration_post_expand()
+
+        
+    def complete_configuration_pre_expand(self):
+        pass
+
+
+    def complete_configuration_post_expand(self):
+        self.is_configured = True
     
+
+    def expand_config(self, run_periods):
+        """Expand self.config into self.period_configs, one per period as listed
+        in run_periods, and also those in self.extra_periods
+        """
+        
+        period_list = copy.deepcopy(run_periods)
+        period_list += self.extra_periods
+        period_list = list(set(period_list))
+        period_list.sort()
+        
+        self.period_configs = {}
+        for period in period_list:
+            self.period_configs[period] = {}
+            
+        for config_key, value in self.config.iteritems():   
+            if isinstance(value, dict):
+                # First find the starting value in the period list
+                # that is in the value dict. For any periods prior
+                # to that, this value will be used.
+                found = False
+                for period in period_list:
+                    if not found:    
+                        if period in value:
+                            curr = period
+                            found = True
+                
+                ## TODO - there might be a fallback value that would
+                ## work here - but it's not implemented. Require at least
+                ## one of the startup or run years to be specified in the
+                ## period config items to assist in matching it up.
+                if not found:
+                    msg = ('Period config for ' + config_key + 
+                        ' does not include any of the startup or run years.')
+                    raise mureilexception.ConfigException(msg, {})
+
+                # Then step through the period list, updating. If the
+                # period is not found in the value dict, the value from
+                # the previous period will be used.
+                for period in period_list:
+                    if period in value:
+                        curr = period
+                    self.period_configs[period][config_key] = value[curr]
+            else:
+                # Special case for value with same value each period
+                for period in period_list:
+                    self.period_configs[period][config_key] = value
+            
+        
+        
+        
+        
+        
+        
