@@ -114,6 +114,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         tmg.config['decommissioning_cost'] = {2000: 0.1, 2010: 0.2}
         tmg.config['time_period_yrs'] = 10
         tmg.config['lifetime_yrs'] = {2000: 10, 2020: 30}
+        tmg.config['timestep_hrs'] = 1.0
         tmg.expand_config([2000, 2010, 2020, 2030, 2040, 2050])
         
         exp_pc = {}
@@ -121,12 +122,14 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
             'lifetime_yrs': 10,
+            'timestep_hrs': 1.0,
             'capital_cost': 5,
             'decommissioning_cost': 0.1,
             'params_to_site_data_name': 'gen_site_map'}
         exp_pc[2000] = {'size': 10, 
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
+            'timestep_hrs': 1.0,
             'lifetime_yrs': 10,
             'capital_cost': 5,
             'decommissioning_cost': 0.1,
@@ -134,6 +137,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         exp_pc[2010] = {'size': 20, 
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
+            'timestep_hrs': 1.0,
             'lifetime_yrs': 10,
             'capital_cost': 6,
             'decommissioning_cost': 0.2,
@@ -142,6 +146,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
             'lifetime_yrs': 30,
+            'timestep_hrs': 1.0,
             'capital_cost': 7,
             'decommissioning_cost': 0.2,
             'params_to_site_data_name': 'gen_site_map'}
@@ -150,12 +155,14 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'time_period_yrs': 10,
             'lifetime_yrs': 30,
             'capital_cost': 8,
+            'timestep_hrs': 1.0,
             'decommissioning_cost': 0.2,
             'params_to_site_data_name': 'gen_site_map'}
         exp_pc[2040] = {'size': 30, 
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
             'lifetime_yrs': 30,
+            'timestep_hrs': 1.0,
             'capital_cost': 8,
             'decommissioning_cost': 0.2,
             'params_to_site_data_name': 'gen_site_map'}
@@ -164,6 +171,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'time_period_yrs': 10,
             'lifetime_yrs': 30,
             'capital_cost': 8,
+            'timestep_hrs': 1.0,
             'decommissioning_cost': 0.2,
             'params_to_site_data_name': 'gen_site_map'}
         
@@ -263,6 +271,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         config['lifetime_yrs'] = {2000: 10, 2020: 30}
         config['model'] = 'txmultigenerator'
         config['section'] = 'Generator'
+        config['timestep_hrs'] = 1.0
 
         tmg = txmultigeneratormultisite.TxMultiGeneratorMultiSite()
         tmg.set_config(config, run_periods=[2000, 2010, 2020])
@@ -277,6 +286,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'time_scale_up_mult': 1.0,
             'carbon_price_m': 0.0,
             'model': 'txmultigenerator',
+            'timestep_hrs': 1.0,
             'section': 'Generator',
             'startup_data_string': None,
             'params_to_site_data_string': [],
@@ -287,6 +297,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         exp_pc[2010] = {'size': 20.0, 
             'time_period_yrs': 10,
             'variable_cost_mult': 1.0,
+            'timestep_hrs': 1.0,
             'params_to_site_data_name': '',
             'startup_data_name': '',
             'time_scale_up_mult': 1.0,
@@ -304,6 +315,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'time_period_yrs': 10,
             'variable_cost_mult': 1.0,
             'time_scale_up_mult': 1.0,
+            'timestep_hrs': 1.0,
             'params_to_site_data_name': '',
             'startup_data_name': '',
             'startup_data_string': None,
@@ -342,6 +354,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         config['variable_cost_mult'] = 1
         config['time_scale_up_mult'] = 1
         config['carbon_price_m'] = 100
+        config['timestep_hrs'] = 1.0
 
         tmg = txmultigeneratormultisite.TxMultiGeneratorMultiSite()
         
@@ -364,6 +377,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         config['variable_cost_mult'] = 1
         config['time_scale_up_mult'] = 1
         config['carbon_price_m'] = 100
+        config['timestep_hrs'] = 1.0
 
         tmg = txmultigeneratormultisite.TxMultiGeneratorMultiSite()
 

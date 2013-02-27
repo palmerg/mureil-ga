@@ -325,6 +325,7 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
                 variable_cost_period: a set of costs, one per site, in $M, for the period.
                 carbon_emissions_period: a set of carbon emissions, one per site, in tonnes of CO2,
                     for the period, or empty list if none.
+                total_supply_period: the total supply in MWh for the period from this generator
                 other: an arbitrary dict, for extra information such as reliability.
                 desc_string: a descriptive string on the current state and output
         """

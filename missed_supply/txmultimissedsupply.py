@@ -75,7 +75,8 @@ class TxMultiLinearMissedSupply(txmultigeneratorbase.TxMultiGeneratorBase):
         spec = txmultigeneratorbase.TxMultiGeneratorBase.get_config_spec(self) + [
             ('cost_per_mwh', float, None),
             ('timestep_hrs', float, None),
-            ('variable_cost_mult', float, None)
+            ('variable_cost_mult', float, None),
+            ('time_scale_up_mult', float, None)
             ]
         
         return spec
@@ -143,6 +144,8 @@ class TxMultiLinearMissedSupply(txmultigeneratorbase.TxMultiGeneratorBase):
             results['supply'] = supply_list
             results['variable_cost_period'] = variable_cost_list * curr_config['variable_cost_mult']
             results['carbon_emissions_period'] = 0
+            results['total_supply_period'] = (curr_config['time_scale_up_mult'] * numpy.sum(supply) *
+                curr_config['timestep_hrs'])
             results['other'] = other_list
             results['desc_string'] = self.get_simple_desc_string(results, state_handle)
 
