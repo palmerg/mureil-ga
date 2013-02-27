@@ -70,8 +70,12 @@ def single_test(file_dir, config_name, pickle_name):
         exp_result = pickle.load(open(pickle_file, 'rb'))
         new_result = pickle.load(open(new_pickle_file, 'rb'))
 
-        exp_bgd = exp_result['best_gene_data']
-        new_bgd = new_result['best_gene_data']
+        if 'best_gene_data' in exp_result:
+            exp_bgd = exp_result['best_gene_data']
+            new_bgd = new_result['best_gene_data']
+        else:
+            exp_bgd = exp_result['opt_data']
+            new_bgd = new_result['opt_data']
 
         # round the total cost to simplify regression comparisions
         # where internal rounding is an issue

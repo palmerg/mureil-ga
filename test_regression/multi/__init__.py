@@ -23,22 +23,4 @@
 #SOFTWARE.
 #
 #
-
-"""Script to call runmureil with extra_data read from the pickle file listed as the
-first argument, extracting 'best_gene' from the dict in there. This will cause
-the simulation to initialise all the genes to this sequence.
-"""
-
-import runmureil
-import sys
-import pickle
-
-if __name__ == '__main__':
-    p = pickle.load(open(sys.argv[1], 'rb'))
-    extra_data = {}
-    if 'best_gene' in p:
-        extra_data['start_gene'] = p['best_gene']
-    else:
-        extra_data['start_gene'] = p['best_params']
-        
-    runmureil.runmureil(sys.argv[2:], extra_data)
+ 

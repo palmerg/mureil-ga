@@ -23,22 +23,32 @@
 #SOFTWARE.
 #
 #
-
-"""Script to call runmureil with extra_data read from the pickle file listed as the
-first argument, extracting 'best_gene' from the dict in there. This will cause
-the simulation to initialise all the genes to this sequence.
+"""Regression test.
+mg_test1 - a short test using sample data of early
+code.
 """
 
-import runmureil
-import sys
-import pickle
+#################################
+#### PUT YOUR FILENAMES HERE ####
+#################################
 
+config = 'asst5_config_multi.txt'
+pickle = 'asst5.pkl'
+
+import sys
+sys.path.append('../..')
+
+import os
+test_dir = os.path.dirname(os.path.realpath(__file__)) 
+
+import unittest
+from test_regression.single_test import single_test
+
+class RegressionTest(unittest.TestCase):
+    def test(self):
+        self.assertTrue(single_test(
+            test_dir, config, pickle))
+      
 if __name__ == '__main__':
-    p = pickle.load(open(sys.argv[1], 'rb'))
-    extra_data = {}
-    if 'best_gene' in p:
-        extra_data['start_gene'] = p['best_gene']
-    else:
-        extra_data['start_gene'] = p['best_params']
-        
-    runmureil.runmureil(sys.argv[2:], extra_data)
+    unittest.main()
+    

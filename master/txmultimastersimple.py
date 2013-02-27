@@ -23,7 +23,7 @@
 #SOFTWARE.
 #
 #
-import numpy as np
+import numpy
 import time
 import logging
 import copy
@@ -32,7 +32,7 @@ from os import path
 from tools import mureilbuilder, mureilexception, mureiloutput, mureiltypes, globalconfig
 from tools import mureilbase, configurablebase
 
-from generator import txmultigenerator
+from generator import txmultigeneratorbase
 
 logger = logging.getLogger(__name__)
 
@@ -84,15 +84,16 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
         param_count = 0
         self.gen_list = {}
         self.gen_params = {}
-        start_values_min = []
-        start_values_max = []
         
+        start_values_min = numpy.array([[]]).reshape((len(self.config['run_periods']), 0))
+        start_values_max = numpy.array([[]]).reshape((len(self.config['run_periods']), 0))
+
         for i in range(len(self.dispatch_order)):
             gen_type = self.dispatch_order[i]
 
             # Build the generator instances
             gen = mureilbuilder.create_instance(full_config, self.global_config, 
-                self.config[gen_type], singlepassgenerator.SinglePassGeneratorBase,
+                self.config[gen_type], txmultigeneratorbase.TxMultiGeneratorBase,
                 self.config['run_periods'])
             self.gen_list[gen_type] = gen
 
@@ -107,14 +108,57 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
             else:
                 self.gen_params[gen_type] = (param_count, 
                     param_count + params_req)
+
+                run_period_len = len(self.config['run_periods'])
+                (starts_min, starts_max) = gen.get_param_starts()
+                starts_min = numpy.array(starts_min)
+                starts_max = numpy.array(starts_max)
+
+                if starts_min.size == 0:
+                    start_values_min = numpy.hstack((start_values_min, (
+                        (numpy.ones((run_period_len, params_req)) * 
+                        self.global_config['min_param_val']).tolist())))
+                else:
+                    start_values_min = numpy.hstack((start_values_min, starts_min))
+
+                if starts_max.size == 0:
+                    start_values_max = numpy.hstack((start_values_max, (
+                        (numpy.ones((run_period_len, params_req)) * 
+                        self.global_config['max_param_val']).tolist())))
+                else:
+                    start_values_max = numpy.hstack((start_values_max, starts_max))
 
             param_count += params_req
-        
+
+        start_values_min = start_values_min.reshape(run_period_len * param_count)
+        start_values_max = start_values_max.reshape(run_period_len * param_count)
+
         self.param_count = param_count
+        # Check that run_periods increases by time_period_yrs
         self.run_periods = self.config['run_periods']
+        if len(self.run_periods) > 1:
+            run_period_diffs = numpy.diff(self.run_periods)
+            if (not (min(run_period_diffs) == self.global_config['time_period_yrs']) or
+                not (max(run_period_diffs) == self.global_config['time_period_yrs'])):
+                raise mureilexception.ConfigException('run_periods must be separated by time_period_yrs', {})
+
         self.period_count = len(self.run_periods)
         self.total_param_count = param_count * self.period_count
-        
+
+        # Check if 'extra_data' has been provided, as a full gene to start at.
+        # extra_data needs to be a dict with entry 'start_gene' that is a list
+        # of integer values the same length as param_count.
+        if extra_data is not None:
+            if 'start_gene' in extra_data:
+                if not (len(start_values_min) == self.total_param_count):
+                    msg = ('extra_data of start_gene passed to txmultimastersimple. ' +
+                        'Length expected = {:d}, found = {:d}'.format(self.total_param_count, 
+                        len(start_values_min)))
+                    raise mureilexception.ConfigException(msg, {})
+
+                start_values_min = extra_data['start_gene']
+                start_values_max = extra_data['start_gene']
+       
         # Instantiate the genetic algorithm
         mureilbuilder.check_section_exists(full_config, self.config['algorithm'])
         algorithm_config = full_config[self.config['algorithm']]
@@ -158,7 +202,7 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
                 if ((self.config['output_frequency'] > 0) and
                     ((i % self.config['output_frequency']) == 0)):
                     logger.info('Interim results at iteration %d', i)
-                    self.output_results()
+                    self.output_results(iteration=i)
                     
         except mureilexception.AlgorithmException:
             # Insert here something special to do if debugging
@@ -168,58 +212,75 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
     
         logger.critical('Run time: %.2f seconds', (time.time() - start_time))
 
-        results = self.output_results(final=True)
+        results = self.output_results(iteration=self.config['iterations'], final=True)
         
         return results
     
     
-    def output_results(self, final=False):
+    def output_results(self, final=False, iteration=0):
     
-        ### TODO - update this
-    
-        (best_gene, best_gene_data) = self.algorithm.get_final()
-        
-        if len(best_gene) > 0:
-            # Protect against an exception before there are any params
-            results = self.evaluate_results(best_gene)
+        (best_params, opt_data) = self.algorithm.get_final()
 
-            if 'demand' in self.dispatch_order:
-                ts_demand = results['other']['demand']['ts_demand']
-            else:
-                ts_demand = self.data.get_timeseries('ts_demand')
-                
-            # and print out the text strings, accompanied by the costs
-            strings = results['gen_desc']
-            costs = results['cost']
-            total_cost = 0.0
-            for gen in results['cost'].iterkeys():
-                info = strings[gen]
-                cost = costs[gen]
-                total_cost += cost
-                logger.info(gen + ' ($M {:.2f}) : '.format(cost) + info)
+        if len(best_params) > 0:
+            # Protect against an exception before there are any params
+            results = self.evaluate_results(best_params)
+
+            logger.info('======================================================')
+            logger.info('Total cost ($M): {:.2f}, including carbon (MT): {:.2f}, terminal value ($M): {:.2f}'.format(
+                results['totals']['cost'], results['totals']['carbon'] * 1e-6, results['totals']['terminal_value']))
+            logger.info('======================================================')
+
+            ts_demand = {}
     
-            logger.info('Total cost ($M): {:.2f}'.format(total_cost))
+            # Now iterate across the periods, and then across the generators
+            for period in self.run_periods:
+                period_results = results['periods'][period]
+                logger.info('------------------------------------------------------')
+                logger.info('PERIOD ' + str(period) + ':')
+                logger.info('------------------------------------------------------')
+                logger.info('Period cost ($M): {:.2f}, carbon (MT): {:.2f}'.format(
+                    period_results['totals']['cost'], 
+                    period_results['totals']['carbon'] * 1e-6))
+
+                if 'demand' in self.dispatch_order:
+                    ts_demand[period] = period_results['demand']['other']['ts_demand']
+                else:
+                    ts_demand[period] = self.data.get_timeseries('ts_demand')
+
+                for gen_type, value in period_results['generators'].iteritems():
+                    gen_string = value['desc_string']
+                    gen_cost = value['cost']
+                    logger.info(gen_type + ' ($M {:.2f}) : '.format(gen_cost) + gen_string)
+
+            logger.info('======================================================')
+
+            pickle_dict = {}
+            pickle_dict['opt_data'] = opt_data
+            pickle_dict['best_params'] = best_params
+
+            full_conf = self.get_full_config()
+            mureiloutput.clean_config_for_pickle(full_conf)
+            pickle_dict['config'] = full_conf
+
+            pickle_dict['best_results'] = results
+            pickle_dict['ts_demand'] = ts_demand
+
+            if self.config['do_plots']:
+                for period in self.run_periods:
+                    plot_data = {}
+                    for gen_type, value in results['periods'][period]['generators'].iteritems():
+                        plot_data[gen_type] = value['aggregate_supply']
+                        
+                    this_final = final and (period == self.config['run_periods'][-1])
+                    mureiloutput.plot_timeseries(plot_data, 
+                        ts_demand[period], this_final, plot_title=(
+                            str(period) + ' at iteration ' + str(iteration)))
+
+            output_file = self.config['output_file']
+            mureiloutput.pickle_out(pickle_dict, output_file)
         else:
             results = None
 
-        pickle_dict = {}
-        pickle_dict['best_gene_data'] = best_gene_data
-        pickle_dict['best_gene'] = best_gene
-
-        full_conf = self.get_full_config()
-        mureiloutput.clean_config_for_pickle(full_conf)
-        pickle_dict['config'] = full_conf
-    
-        pickle_dict['best_results'] = results
-        pickle_dict['ts_demand'] = ts_demand
-    
-        if self.config['do_plots']:
-            mureiloutput.plot_timeseries(results['output'], 
-                ts_demand, final)
-
-        output_file = self.config['output_file']
-        mureiloutput.pickle_out(pickle_dict, output_file)
-  
         return results
         
 
@@ -227,32 +288,43 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
         self.algorithm.finalise()
 
             
-    def calc_cost(self, gene):
+    def calc_cost(self, gene, full_results=False):
         """Calculate the total system cost for this gene. This function is called
         by the algorithm from a callback. The algorithm may set up multi-processing
         and so this calc_cost function (and all functions it calls) must be
-        thread-safe when save_result=False. 
+        thread-safe. 
         This means that the function must not modify any of the 
         internal data of the objects. 
         """
         
-        params_set = gene.reshape(self.param_count, self.period_count)
-
+        temp = numpy.array(gene)
+        params_set = temp.reshape(self.period_count, self.param_count)
+
         gen_state_handles = {}
         for gen_type in self.dispatch_order:
             gen_state_handles[gen_type] = (
-                self.gen_list[gen_type].get_starting_state_handle())        
+                self.gen_list[gen_type].get_startup_state_handle())        
 
         cost = 0
+
+        if full_results:
+            results = {'totals': {}, 'periods': {}, 'terminal': {}}
+            total_carbon = 0.0
+
         for i in range(len(self.run_periods)):
             period = self.run_periods[i]
             params = params_set[i]
 
+            if full_results:
+                period_carbon = 0.0
+                results['periods'][period] = period_results = {'generators': {}, 'totals': {}}
+                results['terminal'] = {'totals': {}, 'generators': {}}
+
             # supply_request is the running total, modified here
             if 'demand' in self.dispatch_order:
-                supply_request = np.zeros(self.data.get_ts_length(), dtype=float)
+                supply_request = numpy.zeros(self.data.get_ts_length(), dtype=float)
             else:
-                supply_request = np.array(self.data.get_timeseries('ts_demand'), dtype=float)
+                supply_request = numpy.array(self.data.get_timeseries('ts_demand'), dtype=float)
 
             period_cost = 0
 
@@ -260,16 +332,52 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
                 gen = self.gen_list[gen_type]
                 gen_ptr = self.gen_params[gen_type]
 
-                (this_cost, this_supply) = gen.calculate_time_period_simple(self, 
-                    gen_state_handles[gen_type], period, params[gen_ptr[0]:gen_ptr[1]], 
-                    supply_request)
+                if full_results:
+                    (this_sites, this_cost, this_supply, 
+                        period_results['generators'][gen_type]) = gen.calculate_time_period_simple( 
+                        gen_state_handles[gen_type], period, params[gen_ptr[0]:gen_ptr[1]], 
+                        supply_request, full_results=True)
+                    period_carbon += numpy.sum(period_results['generators'][gen_type]['carbon_emissions_period'])
+                else:
+                    (this_sites, this_cost, this_supply) = gen.calculate_time_period_simple( 
+                        gen_state_handles[gen_type], period, params[gen_ptr[0]:gen_ptr[1]], 
+                        supply_request)
 
                 period_cost += this_cost
-                supply_request -= this_ts
+                supply_request -= this_supply
+
+                if full_results:
+                    period_results['totals']['cost'] = period_cost
+                    period_results['totals']['carbon'] = period_carbon
+                
+            if full_results:
+                total_carbon += period_carbon
             
             cost += period_cost
+
+        # calculate the terminal value at the end of the last period
+        total_terminal_value = 0.0
+
+        final_period = self.run_periods[-1]
+        for gen_type in self.dispatch_order:
+            gen = self.gen_list[gen_type]
+            terminal_value, site_terminal_value = gen.get_terminal_value(final_period, 
+                gen_state_handles[gen_type])
+
+            if full_results:
+                results['terminal']['generators'][gen_type] = {'total_value': terminal_value, 
+                    'site_value': site_terminal_value}
+            total_terminal_value += terminal_value
             
-        return cost
+        cost -= total_terminal_value
+
+        if full_results:
+            results['totals']['cost'] = cost
+            results['totals']['carbon'] = total_carbon
+            results['totals']['terminal_value'] = total_terminal_value
+            return cost, results
+        else:
+            return cost
 
 
     def evaluate_results(self, params):
@@ -280,33 +388,12 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
             params: list of numbers, typically the best output from a run.
             
         Outputs:
-            results: a dict containing:
-                gen_desc: dict of gen_type: desc 
-                    desc are strings describing
-                    the generator type and the capacity or other parameters.
-                cost: dict of gen_type: cost
-                output: dict of gen_type: output
-                other: dict of gen_type: other saved data
+            results: a dict of gen_type: gen_results
+            where gen_results is the output from calculate_time_period_simple in
+            txmultigenerator.py (or subclass), with full_results = True.
         """
         
-        # First evaluate with these parameters
-
-        ### TODO - update this
-#        self.calc_cost(params, save_result=True)
-#            
-        results = {}
-#        results['gen_desc'] = {}
-#        for val_type in ['capacity', 'cost', 'output', 'other']:
-#            results[val_type] = {}
-#
-#        for gen_type in self.dispatch_order:
-#            gen = self.gen_list[gen_type]
-#            results['gen_desc'][gen_type] = gen.interpret_to_string()
-#
-#            saved_result = gen.get_saved_result()
-#            for val_type in ['capacity', 'cost', 'output', 'other']:
-#                results[val_type][gen_type] = saved_result[val_type]
-#
+        cost, results = self.calc_cost(params, full_results=True)
         return results
         
         

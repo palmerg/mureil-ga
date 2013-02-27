@@ -39,6 +39,7 @@ import logging
 import string
 import copy
 import types
+import ast
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +157,8 @@ def read_flags(flags, alt_args_list=None):
                      'optim_type': ('Master', 'optim_type'),
                      'processes': ('algorithm', 'processes'),
                      'output_file' : ('Master', 'output_file'),
-                     'do_plots' : ('Master', 'do_plots')}
+                     'do_plots' : ('Master', 'do_plots'),
+                     'run_periods': ('Master', 'run_periods')}
                  
     parser = argparse.ArgumentParser()
     
@@ -350,7 +352,7 @@ def check_subclass(class_instance, baseclass):
     """
 
     if not issubclass(class_instance.__class__, baseclass):
-        msg = ('in ' + mureilexception.find_caller() + ' ' + 
+        msg = ('in ' + mureilexception.find_caller(1) + ' ' + 
             class_instance.__class__.__name__ + 
             ' does not implement ' + baseclass.__name__)
         logging.critical(msg)
@@ -535,11 +537,21 @@ def apply_conversions(config, config_spec):
                 # Multiple time periods is specified by {}, and separated by commas
                 curr_val = curr_val.strip()
                 if (len(curr_val) > 0) and (curr_val[0] == '{'):
+                    if not (curr_val[-1] == '}'):
+                        raise mureilexception.ConfigException(
+                            'When parsing configuration, found string ' + curr_val +
+                            ' which begins with { but does not end with }', {})
+                            
                     parse_str = curr_val[1:-1]
                     config[conf_name] = new_val = {}
                     vals = parse_str.split(',')
                     for val in vals:
-                        (period, value) = val.split(':')
+                        try:
+                            (period, value) = val.split(':')
+                        except ValueError:
+                            raise mureilexception.ConfigException(
+                                'When parsing configuration, found string ' + curr_val +
+                                ' which includes an entry that is not period:value', {})
                         if conv_fn is None:
                             new_val[int(period)] = value.strip()
                         else:
@@ -678,7 +690,7 @@ def string_to_bool(val):
     Used as a conversion function for apply_conversions above.
     
     Inputs:
-        val: either 'True' or 'False'
+        val: either 'True' or 'False', or a boolean
         
     Outputs:
         boolean
@@ -687,6 +699,22 @@ def string_to_bool(val):
         return val
     else:
         return (val.strip() == 'True')
+
+
+def python_eval(val):
+    """If val is a string, evaluate using python to get a python object.
+    If not a string, leave untouched.
+    
+    Inputs:
+        val: a string representing a python expression, or other type which will be ignored
+        
+    Outputs:
+        val, if the input val was not a string, or a python object.
+    """
+    if isinstance(val, str):
+        return ast.literal_eval(val)
+    else:
+        return val
     
     
 def supply_single_pass_data(gen, data, gen_type):

@@ -334,7 +334,7 @@ class Gene(list):
         max_starts = self.config['start_values_max']
         
         for i in range(self.length):
-            if not min_starts:
+            if len(min_starts) == 0:
                 self.base = Value(min_param_val, max_param_val)
             else:
                 self.base = Value(min_starts[i], max_starts[i])

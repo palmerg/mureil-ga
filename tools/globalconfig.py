@@ -34,7 +34,7 @@ def get_global_spec():
     optional.
     """
     return [('timestep_mins', float, None),
-        ('time_period_yrs', int, None),
+        ('time_period_yrs', float, None),
         ('timestep_hrs', float, None),
         ('min_param_val', float, None),
         ('max_param_val', float, None),

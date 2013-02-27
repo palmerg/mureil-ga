@@ -33,10 +33,13 @@ class Data(datasinglepassbase.DataSinglePassBase):
     def complete_configuration(self):
         self.data = {}
         self.data['ts_wind'] = self.wind_data()
+        self.data['ts_wind_map'] = numpy.array([[33, 0], [55, 1], [44, 2], [22, 3], [66, 1]])
+        self.data['ts_wind_startup'] = numpy.array([[66, 300, 2000, 2040]])
         self.data['ts_solar'] = self.solar_data()
         self.data['ts_demand'] = self.demand_data()
         self.ts_length = self.data['ts_wind'].shape[0]
         self.is_configured = True
+
 
 
     def wind_data(self):
