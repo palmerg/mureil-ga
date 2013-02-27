@@ -163,15 +163,15 @@ class ConfigurableMultiBase(ConfigurableBase):
             complete_configuration_post_expand (empty, for classes that do further processing)
         """
         
+        self.run_periods = run_periods
         self.load_initial_config(config, global_config)
         self.process_initial_config()
         self.update_from_config_spec()
         self.check_config()
         self.complete_configuration_pre_expand()
-        self.run_periods = run_periods
         self.expand_config(run_periods)
         self.complete_configuration_post_expand()
-
+        
         
     def complete_configuration_pre_expand(self):
         pass
@@ -187,6 +187,7 @@ class ConfigurableMultiBase(ConfigurableBase):
         """
         
         period_list = copy.deepcopy(run_periods)
+        
         period_list += self.extra_periods
         period_list = list(set(period_list))
         period_list.sort()

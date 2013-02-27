@@ -33,6 +33,20 @@ class MureilException(Exception):
         return self.msg
 
 
+class ProgramException(MureilException):
+    """Exception raised for errors that are due to programming, not
+    configuration.
+
+    Attributes:
+        msg  -- explanation of the error
+        data -- a dict of any useful information to understand the error
+    """
+
+    def __init__(self, msg, data):
+        self.msg = msg
+        self.data = data
+    
+
 class AlgorithmException(MureilException):
     """Exception raised for errors found while running the algorithm.
 
