@@ -102,7 +102,8 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             ('lifetime_yrs', float, 20),
             ('size', float, 1.0),
             ('start_min_param', int, 1e20),
-            ('start_max_param', int, 1e20)
+            ('start_max_param', int, 1e20),
+            ('timestep_hrs', float, None)
             ]
 
 
@@ -486,6 +487,8 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             results['variable_cost_period'] = variable_cost_list * curr_config['variable_cost_mult']
             results['carbon_emissions_period'] = (carbon_emissions_list * 
                 curr_config['time_scale_up_mult'])
+            results['total_supply_period'] = (curr_config['time_scale_up_mult'] * numpy.sum(supply) *
+                curr_config['timestep_hrs'])
             results['other'] = other_list
             results['desc_string'] = self.get_simple_desc_string(results, state_handle)
 

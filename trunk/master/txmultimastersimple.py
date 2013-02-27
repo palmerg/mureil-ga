@@ -246,11 +246,18 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
                     ts_demand[period] = period_results['demand']['other']['ts_demand']
                 else:
                     ts_demand[period] = self.data.get_timeseries('ts_demand')
+            
+                period_results['totals']['demand'] = (numpy.sum(ts_demand[period]) *
+                    self.global_config['time_scale_up_mult'] * self.global_config['timestep_hrs'])
+                logger.info('Period total demand (GWh): {:.2f}'.format(
+                    period_results['totals']['demand'] / 1000))
 
                 for gen_type, value in period_results['generators'].iteritems():
                     gen_string = value['desc_string']
                     gen_cost = value['cost']
-                    logger.info(gen_type + ' ($M {:.2f}) : '.format(gen_cost) + gen_string)
+                    gen_supply = value['total_supply_period']
+                    logger.info(gen_type + ' ($M {:.2f}, GWh {:.2f}) : '.format(
+                        gen_cost, gen_supply / 1000) + gen_string)
 
             logger.info('======================================================')
 
@@ -346,11 +353,9 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
                 period_cost += this_cost
                 supply_request -= this_supply
 
-                if full_results:
-                    period_results['totals']['cost'] = period_cost
-                    period_results['totals']['carbon'] = period_carbon
-                
             if full_results:
+                period_results['totals']['cost'] = period_cost
+                period_results['totals']['carbon'] = period_carbon
                 total_carbon += period_carbon
             
             cost += period_cost
