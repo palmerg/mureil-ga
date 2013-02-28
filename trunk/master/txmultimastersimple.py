@@ -79,6 +79,16 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
             mureilbase.DataSinglePassInterface)
         self.global_config['data_ts_length'] = self.data.get_ts_length()
         globalconfig.post_data_global_calcs(self.global_config)
+
+        # Instantiate the transmission model
+        if self.config['transmission'] in full_config:
+            self.transmission = mureilbuilder.create_instance(full_config, self.global_config, 
+                self.config['transmission'], configurablebase.ConfigurableMultiBase,
+                self.config['run_periods'])
+            mureilbuilder.supply_single_pass_data(self.transmission,
+                self.data, self.config['transmission'])
+        else:
+            self.transmission = None
         
         # Instantiate the generator objects, set their data, determine their param requirements
         param_count = 0
@@ -108,7 +118,7 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
             else:
                 self.gen_params[gen_type] = (param_count, 
                     param_count + params_req)
-
+
                 run_period_len = len(self.config['run_periods'])
                 (starts_min, starts_max) = gen.get_param_starts()
                 starts_min = numpy.array(starts_min)
@@ -176,6 +186,7 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
         return [
             ('algorithm', None, 'Algorithm'),
             ('data', None, 'Data'),
+            ('transmission', None, 'Transmission'),
             ('global', None, 'Global'),
             ('iterations', int, 100),
             ('output_file', None, 'mureil.pkl'),
@@ -224,7 +235,7 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
         if len(best_params) > 0:
             # Protect against an exception before there are any params
             results = self.evaluate_results(best_params)
-
+
             logger.info('======================================================')
             logger.info('Total cost ($M): {:.2f}, including carbon (MT): {:.2f}, terminal value ($M): {:.2f}'.format(
                 results['totals']['cost'], results['totals']['carbon'] * 1e-6, results['totals']['terminal_value']))
@@ -243,7 +254,7 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
                     period_results['totals']['carbon'] * 1e-6))
 
                 if 'demand' in self.dispatch_order:
-                    ts_demand[period] = period_results['demand']['other']['ts_demand']
+                    ts_demand[period] = period_results['generators']['demand']['other']['ts_demand']
                 else:
                     ts_demand[period] = self.data.get_timeseries('ts_demand')
             
@@ -306,11 +317,14 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
         
         temp = numpy.array(gene)
         params_set = temp.reshape(self.period_count, self.param_count)
-
+
         gen_state_handles = {}
         for gen_type in self.dispatch_order:
             gen_state_handles[gen_type] = (
                 self.gen_list[gen_type].get_startup_state_handle())        
+
+        if self.transmission is not None:
+            tx_state_handle = self.transmission.get_startup_state_handle()
 
         cost = 0
 
@@ -334,6 +348,7 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
                 supply_request = numpy.array(self.data.get_timeseries('ts_demand'), dtype=float)
 
             period_cost = 0
+            period_sites = []
 
             for gen_type in self.dispatch_order:
                 gen = self.gen_list[gen_type]
@@ -350,8 +365,14 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
                         gen_state_handles[gen_type], period, params[gen_ptr[0]:gen_ptr[1]], 
                         supply_request)
 
+                period_sites += this_sites
                 period_cost += this_cost
                 supply_request -= this_supply
+
+            if self.transmission is not None:
+                tx_cost = self.transmission.calculate_cost(tx_state_handle, period, period_sites)
+                period_cost += tx_cost
+                ## and store tx_cost somewhere useful in period_results
 
             if full_results:
                 period_results['totals']['cost'] = period_cost

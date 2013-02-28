@@ -37,6 +37,7 @@ class Data(datasinglepassbase.DataSinglePassBase):
         self.data['ts_wind_startup'] = numpy.array([[66, 300, 2000, 2040]])
         self.data['ts_solar'] = self.solar_data()
         self.data['ts_demand'] = self.demand_data()
+        self.data['tx_distance_map'] = numpy.array([[22, 1000], [33, 200], [44, 500], [55, 1], [66, 200], [77, 2000], [88, 100], [99, 50]])
         self.ts_length = self.data['ts_wind'].shape[0]
         self.is_configured = True
 
