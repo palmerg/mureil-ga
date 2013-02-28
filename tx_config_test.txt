@@ -13,6 +13,7 @@ fossil: Fossil
 legacy_coal: BrownCoal
 missed_supply: Missed_Supply
 data: Data
+transmission: Transmission
 dispatch_order: solar wind legacy_coal fossil missed_supply
 run_periods: 2010 2020 2030 2040 2050
 #run_periods: 2010
@@ -36,6 +37,11 @@ mort: 0.5
 nuke_power: 20
 processes: 0
 seed: 12345
+
+[Transmission]
+model: transmission.distancetxmodel.DistanceTxModel
+cost_per_km: 2.0
+site_to_distance_map_name: tx_distance_map
 
 [Solar]
 model: generator.txmultivariablegenerator.TxMultiVariableGeneratorBase

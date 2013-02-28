@@ -1,5 +1,4 @@
-# MUREIL configuration to match assignment 5 of
-# Renewable Energy in 2012
+# Config file incorporating txmulti demand model
 
 [Master]
 model: master.txmultimastersimple.TxMultiMasterSimple
@@ -9,12 +8,13 @@ output_file: asst5.pkl
 algorithm: Algorithm
 solar: Solar
 wind: Wind
+demand: Demand
 fossil: Fossil
 legacy_coal: BrownCoal
 missed_supply: Missed_Supply
 data: Data
-dispatch_order: solar wind legacy_coal fossil missed_supply
-run_periods: 2010 2020 2030 2040 2050
+dispatch_order: demand solar wind legacy_coal fossil missed_supply
+run_periods: 2010 2020 2030 2040
 #run_periods: 2010
 #do_plots: True
 
@@ -37,6 +37,10 @@ nuke_power: 20
 processes: 0
 seed: 12345
 
+[Demand]
+model: demand.txmulti_victempdemand.VicTempDemand 
+site_index: 1
+
 [Solar]
 model: generator.txmultivariablegenerator.TxMultiVariableGeneratorBase
 capital_cost: 1.0
@@ -44,7 +48,6 @@ size: 10
 detail_type: Solar_Thermal
 data_name: ts_solar
 lifetime_yrs: 20
-params_to_site_data_string: 88 77
 start_min_param: 100
 start_max_param: 150
 
@@ -55,10 +58,6 @@ size: 10
 detail_type: Wind
 data_name: ts_wind
 lifetime_yrs: 20
-data_map_name: ts_wind_map
-params_to_site_data_string: 22 33 44
-startup_data_string: [[55, 100, 2000, 2030]]
-startup_data_name: ts_wind_startup
 
 [Fossil]
 model: thermal.txmultiinstantthermal.TxMultiInstantMaxThermal
@@ -83,4 +82,4 @@ model: missed_supply.txmultimissedsupply.TxMultiLinearMissedSupply
 cost_per_mwh: 10000000
 
 [Data]
-model: data.mg_sample_data.Data
+model: data.sample_ge_data.Data

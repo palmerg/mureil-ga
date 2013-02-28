@@ -120,8 +120,8 @@ class TxMultiVariableGeneratorBase(txmultigeneratormultisite.TxMultiGeneratorMul
             
             if not (len(self.params_to_site) == self.data.shape[1]):
                 raise mureilexception.ConfigException('In model ' + self.config['section'] +
-                    ', no data map is provided, the data is width ' + self.data.shape[1] + 
-                    ' and the provided params_to_site list is ' + len(self.params_to_site) +
+                    ', no data map is provided, the data is width ' + str(self.data.shape[1]) + 
+                    ' and the provided params_to_site list is ' + str(len(self.params_to_site)) +
                     ' so no automatic mapping is possible.', {})
                     
             for i in range(len(self.params_to_site)):

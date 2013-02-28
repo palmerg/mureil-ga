@@ -257,3 +257,9 @@ a file, see runmureil_gene.py. Run as follows:
 where test.pkl has been saved from a previous run (or you have created it),
 so it contains a dict with 'best_gene' as a member.
 
+HELP:
+
+run python from the top directory
+import module
+help(module)
+
