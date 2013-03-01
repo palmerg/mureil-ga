@@ -34,7 +34,8 @@
 import os
 import inspect
 import string
-from generator import singlepassgenerator
+from tools import configurablebase
+from generator import singlepassgenerator, txmultigeneratorbase
 
 
 def list_modules(directory):
@@ -82,19 +83,45 @@ def print_docstring(module_list):
             module = my_import(module_name)       
         for name, obj in inspect.getmembers(module):          
                 if inspect.isclass(obj):
-                    if issubclass(obj, singlepassgenerator.SinglePassGeneratorBase):
-                        print "------------------------------------------------------------------------------"
-                        print "Module: " + module_name
-                        print "Class:  " + name
-                        print "------------------------------------------------------------------------------"
-                        print obj.get_config_spec.__doc__
+                    if issubclass(obj, configurablebase.ConfigurableBase):
+                        x = "------------------------------------------------------------------------------"
+                        print x
+                        f.write(x + '\n')
+                        
+                        x = "Module: " + module_name
+                        print x
+                        f.write(x + '\n')
+                        
+                        x = "Class:  " + name
+                        print x
+                        f.write(x + '\n')
+                        
+                        if issubclass(obj, singlepassgenerator.SinglePassGeneratorBase):
+                            x = "Implements: SinglePassGeneratorBase"
+                            print x
+                            f.write(x + '\n')
+                        
+                        if issubclass(obj, txmultigeneratorbase.TxMultiGeneratorBase):
+                            x = "Implements: TxMultiGeneratorBase"
+                            print x
+                            f.write(x + '\n')
+                        
+                        x = "------------------------------------------------------------------------------"
+                        print x
+                        f.write(x + '\n')
+                        
+                        x = str(obj.__doc__)
+                        print x
+                        f.write(x + '\n')
 
-                        f.write("------------------------------------------------------------------------------" + "\n") 
-                        f.write("Module: " + module_name + "\n")
-                        f.write("Class:  " + name + "\n")
-                        f.write("------------------------------------------------------------------------------" + "\n")
-                        help_doc = str(obj.get_config_spec.__doc__)
-                        f.write(help_doc + "\n")
+                        x = "---------------------"
+                        print x
+                        f.write(x + '\n')
+                                                
+                        x = str(obj.get_config_spec.__doc__)
+                        print x
+                        f.write(x + '\n')
+
 
     f.close
 

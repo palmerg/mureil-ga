@@ -57,7 +57,7 @@ class TestSlowResponseThermal(unittest.TestCase):
 
     def do_csv_test(self, filename):
  
-        test_file = "beta_test3.csv"
+        test_file = "Beta_test3.csv"
 
         """
         beta_test1.csv : base test case where rem_demand exceeds max cap
@@ -120,51 +120,51 @@ class TestSlowResponseThermal(unittest.TestCase):
 
 
     def test_1(self):
-        print "beta_test1.csv"
+        print "Beta_test1.csv"
         self.do_csv_test("beta_test1.csv")        
 
     def test_2(self):
-        print "beta_test2.csv"
+        print "Beta_test2.csv"
         self.do_csv_test("beta_test2.csv")        
 
     def test_3(self):
-        print "beta_test3.csv"
+        print "Beta_test3.csv"
         self.do_csv_test("beta_test3.csv")        
 
     def test_4(self):
-        print "beta_test4.csv"
+        print "Beta_test4.csv"
         self.do_csv_test("beta_test4.csv")        
 
     def test_5(self):
-        print "beta_test5.csv"
+        print "Beta_test5.csv"
         self.do_csv_test("beta_test5.csv")              
 
     def test_6(self):
-        print "beta_test6.csv"
+        print "Beta_test6.csv"
         self.do_csv_test("beta_test6.csv")
 
     def test_7(self):
-        print "beta_test7.csv"
+        print "Beta_test7.csv"
         self.do_csv_test("beta_test7.csv") 
 
     def test_8(self):
-        print "beta_test8.csv"
+        print "Beta_test8.csv"
         self.do_csv_test("beta_test8.csv") 
 
     def test_9(self):
-        print "beta_test9.csv"
+        print "Beta_test9.csv"
         self.do_csv_test("beta_test9.csv")
 
     def test_10(self):
-        print "beta_test10.csv"
+        print "Beta_test10.csv"
         self.do_csv_test("beta_test10.csv")
 
     def test_11(self):
-        print "beta_test11.csv"
+        print "Beta_test11.csv"
         self.do_csv_test("beta_test11.csv")
 
     def test_12(self):
-        print "beta_test12.csv"
+        print "Beta_test12.csv"
         self.do_csv_test("beta_test12.csv")
 
 class TestSlowResponseThermalFixed(unittest.TestCase):
