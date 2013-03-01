@@ -206,21 +206,21 @@ class TxMultiVariableGeneratorLinearInstall(TxMultiVariableGeneratorBase):
             ]
 
 
-    def calculate_capital_cost_site(self, site_data, period, new_build, site):
+    def calculate_capital_cost_site(self, site_data, period, site):
         """Implement calculate_capital_cost_site, as defined by TxMultiGeneratorBase.
         
         Calculate the incremental capital cost incurred in this 
         period by the new capacity, for this site.
         
-        This function charges a per-MW cost plus an install figure if the
-        site had no capacity at the end of the previous period.
+        This function charges a per-MW cost plus an install figure if all
+        the current capacity is new, and the site has not been used before
+        for this type of generator.
         
         Inputs: 
-            site_data: a list of (capacity, build, decomm) for this site from the
+            site_data: a pair of lists - (current_capacity, history), each 
+                a list of tuples of (capacity, build, decom) from the
                 state_handle.
             period: the current period, an integer
-            new_build: an index array into the site_tuple lists, indicating
-                which are new capacity.
             site: the site index
                 
         Outputs:
@@ -228,16 +228,22 @@ class TxMultiVariableGeneratorLinearInstall(TxMultiVariableGeneratorBase):
             new_capacity: the total new capacity installed at this site
         """
         
-        new_cap_list = [tup[0] for tup in site_data if (tup[1] == period)]
+        new_cap_list = [tup[0] for tup in site_data[0] if (tup[1] == period)]
 
         capacity_cost = self.period_configs[period]['capital_cost']
         this_cost = sum(new_cap_list) * capacity_cost
 
-        if len(new_cap_list) == len(site_data):
-            # all capacity is new, so charge the 'install' as well
-            this_cost += self.period_configs[period]['install_cost']
+        print period
+        print site
+        print site_data
+        
+        if len(new_cap_list) == len(site_data[0]):
+            # check if the site has been used before, ever
+            if len(site_data[1]) == 0:
+                # the site is new, so charge the 'install' as well
+                this_cost += self.period_configs[period]['install_cost']
     
-        return this_cost, new_cap        
+        return this_cost, sum(new_cap_list)        
             
     
 

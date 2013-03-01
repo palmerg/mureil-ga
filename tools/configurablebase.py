@@ -148,7 +148,7 @@ class ConfigurableMultiBase(ConfigurableBase):
         self.extra_periods = []
 
 
-    def set_config(self, config, global_config=None, run_periods=None):
+    def set_config(self, config, global_config=None, run_periods=[]):
         """Set the config to the values in config, with those in global_config
         also applied, using self.config_spec to apply defaults, convert parameters
         and check that all are present and none are extras.

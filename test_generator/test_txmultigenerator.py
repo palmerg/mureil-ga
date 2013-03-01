@@ -101,6 +101,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         exp_state = {}
         exp_state['curr_period'] = None
         exp_state['capacity'] = {}
+        exp_state['history'] = {}
         cap_list = exp_state['capacity']
         cap_list[22] = [(100, 1990, 2020), (200, 2000, 2030)]
         cap_list[11] = [(300, 2000, 2010)]
@@ -185,6 +186,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         exp_state_handle = {}
         exp_state_handle['curr_period'] = 2010
         exp_state_handle['capacity'] = cap_list = {}
+        exp_state_handle['history'] = hist_list = {}
         cap_list[22] = [(100, 1990, 2020), (200, 2000, 2030), (1000, 2010, 2020)]
         cap_list[11] = [(300, 2000, 2010)]
         cap_list[44] = [(400, 1990, 2010), (1000, 1990, 2020), (2000, 2010, 2010)]
@@ -223,9 +225,13 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         exp_state_handle = {}
         exp_state_handle['curr_period'] = 2010
         exp_state_handle['capacity'] = cap_list = {}
+        exp_state_handle['history'] = hist_list = {}
+
         cap_list[22] = [(100, 1990, 2020), (200, 2000, 2030), (1000, 2010, 2020)]
         cap_list[44] = [(1000, 1990, 2020)]
         cap_list[33] = [(1000, 2010, 2040)]
+        hist_list[11] = [(300, 2000, 2010)]
+        hist_list[44] = [(400, 1990, 2010), (2000, 2010, 2010)]
         
         self.assertTrue((exp_state_handle == state_handle))
         
@@ -236,6 +242,8 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         exp_state_handle = {}
         exp_state_handle['curr_period'] = 2020
         exp_state_handle['capacity'] = cap_list = {}
+        exp_state_handle['history'] = hist_list
+
         cap_list[11] = [(2200, 2020, 2040)]
         cap_list[22] = [(100, 1990, 2020), (200, 2000, 2030), (1000, 2010, 2020),
             (4400, 2020, 2040)]
@@ -253,7 +261,9 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         exp_state = {}
         exp_state['curr_period'] = None
         exp_state['capacity'] = {}
+        exp_state['history'] = {}
         cap_list = exp_state['capacity']
+        hist_list = exp_state['history']
 
         cap_list[22] = [(100, 1990, 2020), (200, 2000, 2030)]
         cap_list[11] = [(300, 2000, 2010)]

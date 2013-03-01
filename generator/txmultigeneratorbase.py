@@ -45,7 +45,8 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
         configurablebase.ConfigurableMultiBase.__init__(self)
         self.startup_state = {
             'curr_period': None,
-            'capacity': {}
+            'capacity': {},
+            'history': {}
         }
 
 

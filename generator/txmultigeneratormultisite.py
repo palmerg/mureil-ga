@@ -199,12 +199,22 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
 
         # Find out which build periods are covered.
         startup_data = numpy.array(startup_data)
+        if not (len(startup_data.shape) == 2):
+            raise mureilexception.ConfigException('startup data array for module ' +
+                self.config['section'] + ' is not rectangular.', {})
+                
+        if not (startup_data.shape[1] == 4):
+            raise mureilexception.ConfigException('startup data array for module ' +
+                self.config['section'] + ' shape ' + str(startup_data.shape) + 
+                ' but (n, 4) is required.', {})
+
         self.extra_periods = map(int, 
             (list(set(startup_data[:,2].tolist() + self.extra_periods))))
         self.extra_periods.sort()
 
         # And insert each existing generator into the starting state.
         cap_list = self.startup_state['capacity']
+        hist_list = self.startup_state['history']
 
         for i in range(startup_data.shape[0]):
             site_index = int(startup_data[i, 0])
@@ -212,17 +222,20 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             period = int(startup_data[i, 2])
             decomm_date = int(startup_data[i, 3])
 
+            new_entry = (new_cap, period, decomm_date)
             if decomm_date < self.run_periods[0]:
                 logger.warning('Model in section ' + self.config['section'] +
                     ' adds startup capacity decommissioned at end of ' + decomm_date +
                     ' but the first run period is ' + self.run_periods[0] + 
                     ' so it has been removed from the startup state.')
+                if site_index not in hist_list:
+                    hist_list[site_index] = []
+                hist_list[site_index].append(new_entry)
             else:
                 new_entry = (new_cap, period, decomm_date)
 
                 if site_index not in cap_list:
                     cap_list[site_index] = []
-                
                 cap_list[site_index].append(new_entry)
 
 
@@ -292,6 +305,8 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
     def update_state_new_period_params(self, state_handle, period, new_params):
         """Implements update_state_new_period_params as defined in txmultigeneratorbase,
         for the state_handle format for this multi-site implementation.
+        
+        Filters any negative new_params values to 0.
         """
             
         state_handle['curr_period'] = period
@@ -300,7 +315,7 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         
         cap_list = state_handle['capacity']        
 
-        new_cap = numpy.array(new_params) * curr_conf['size']
+        new_cap = numpy.array(new_params).clip(0) * curr_conf['size']
 
         for i in (numpy.nonzero(new_cap)[0]):
             site_index = self.params_to_site[i]
@@ -320,6 +335,7 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         """
         period = state_handle['curr_period']
         cap_list = state_handle['capacity']
+        hist_list = state_handle['history']
     
         total_cost = 0.0
         sites = []
@@ -341,6 +357,11 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
                 cost.append(this_cost)
                 total_cost += this_cost
 
+                # add the decommissioned capacity to the 'history' list
+                if not site in hist_list:
+                    hist_list[site] = []
+                hist_list[site] += decomm
+                
                 # and rebuild the list of what's left
                 # note that the expression in here is the complement of that to compute
                 # decomm above.
@@ -366,6 +387,7 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         
         period = state_handle['curr_period']
         cap_list = state_handle['capacity']
+        hist_list = state_handle['history']
     
         total_cost = 0.0
         sites = []
@@ -373,8 +395,14 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         new_capacity = []
         
         for site, value in cap_list.iteritems():
+            try:
+                hist = hist_list[site]
+            except KeyError:
+                hist = []
+
             this_cost, new_cap = self.calculate_capital_cost_site(
-                value, period, site)
+                (value, hist), period, site)
+
             if new_cap > 0:
                 sites.append(site)
                 new_capacity.append(new_cap)
@@ -394,7 +422,8 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         of new capacity.
         
         Inputs: 
-            site_data: a list of tuples of (capacity, build, decom) from the
+            site_data: a pair of lists - (current_capacity, history), each 
+                a list of tuples of (capacity, build, decom) from the
                 state_handle.
             period: the current period, an integer
             site: the site index
@@ -404,7 +433,7 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             new_capacity: the total new capacity installed at this site
         """
         
-        new_cap = sum([tup[0] for tup in site_data if (tup[1] == period)])
+        new_cap = sum([tup[0] for tup in site_data[0] if (tup[1] == period)])
 
         capacity_cost = self.period_configs[period]['capital_cost']
         this_cost = new_cap * capacity_cost
