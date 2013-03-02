@@ -72,9 +72,12 @@ def single_test(file_dir, config_name, pickle_name):
 
         if 'best_gene_data' in exp_result:
             exp_bgd = exp_result['best_gene_data']
-            new_bgd = new_result['best_gene_data']
         else:
             exp_bgd = exp_result['opt_data']
+
+        if 'best_gene_data' in new_result:
+            new_bgd = new_result['best_gene_data']
+        else:
             new_bgd = new_result['opt_data']
 
         # round the total cost to simplify regression comparisions
