@@ -31,7 +31,7 @@ pumped_hydro_opt - test using the optimisable pumped hydro model
 #### PUT YOUR FILENAMES HERE ####
 #################################
 
-config = 'sample_config_opt_hydro.txt'
+config1 = 'sample_config_opt_hydro.txt'
 pickle = 'opt_hydro.pkl'
 
 import sys
@@ -43,11 +43,12 @@ test_dir = os.path.dirname(os.path.realpath(__file__))
 import unittest
 from test_regression.single_test import single_test
 
-class RegressionTest(unittest.TestCase):
+class RegressionTest1(unittest.TestCase):
     def test(self):
         self.assertTrue(single_test(
-            test_dir, config, pickle))
-      
+            test_dir, config1, pickle))
+
+
 if __name__ == '__main__':
     unittest.main()
     

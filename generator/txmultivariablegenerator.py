@@ -233,10 +233,6 @@ class TxMultiVariableGeneratorLinearInstall(TxMultiVariableGeneratorBase):
         capacity_cost = self.period_configs[period]['capital_cost']
         this_cost = sum(new_cap_list) * capacity_cost
 
-        print period
-        print site
-        print site_data
-        
         if len(new_cap_list) == len(site_data[0]):
             # check if the site has been used before, ever
             if len(site_data[1]) == 0:

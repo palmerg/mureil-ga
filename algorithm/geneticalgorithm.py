@@ -38,6 +38,7 @@ import random
 import logging
 import sys
 import copy
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +95,14 @@ class Engine(configurablebase.ConfigurableBase):
             max_len: maximum gene length
             min_param_val: minimum gene value value
             max_param_val: maximum gene value value
-            base_mute: ?
-            gene_mute: ?
+            base_mute: the rate (proportion) of gene values that mutate
+                to rand(min_param_val, max_param_val) on each iteration.
+            gene_mute: the rate (proportion) of genes that change length
+                on each iteration - set this to 0 if min_len == max_len.
+            local_mute: the rate (proportion) of gene values that mutate
+                within the radius of current value * local_mute_size on each iteration
+            local_mute_size: the radius of mutation for local mute, as a proportion
+                of the current value.
             gene_test_callback: function handle to calculate cost of gene. This function
                 must be thread-safe as it will be called in multiprocessing.
             start_values_min: list of minimum initialisation values for genes.
@@ -106,6 +113,8 @@ class Engine(configurablebase.ConfigurableBase):
             ('min_param_val', int, None), 
             ('max_param_val', int, None),
             ('base_mute', float, None), 
+            ('local_mute', float, 0),
+            ('local_mute_size', float, 0),
             ('gene_mute', float, None),
             ('pop_size', int, None), 
             ('mort', float, None), 
@@ -421,32 +430,57 @@ class Pop(list):
         output: None
         randomly changes some gene.value lengths and some values
         """
+        min_len = self.config['min_len']
+        max_len = self.config['max_len']
+        gene_mute = self.config['gene_mute']
+        base_mute = self.config['base_mute']
+        local_mute = self.config['local_mute']
+        local_mute_size = self.config['local_mute_size']
+        min_param_val = self.config['min_param_val']
+        max_param_val = self.config['max_param_val']
+        
+        local_positions = []
         positions = []
         freaks = []
         for i in range(len(self.genes)):
             for j in range(len(self.genes[i].values)):
-                if random.random() < self.config['base_mute']:
+                if random.random() < base_mute:
                     positions.append((i,j))
-            if random.random() < self.config['gene_mute']:
+                if local_mute > 0:
+                    if random.random() < local_mute:
+                        local_positions.append((i, j))
+            if random.random() < gene_mute:
                 freaks.append(i)
+
+        for co_ord in local_positions:
+            i = co_ord[0]
+            j = co_ord[1]
+            curr = self.genes[i].values[j]
+            radius = int(math.ceil(abs(float(curr)) * local_mute_size))
+            min_val = max(min_param_val, curr - radius)
+            max_val = min(max_param_val, curr + radius)
+            self.base = Value(min_val, 
+                max_val)
+            self.genes[i].values[j] = self.base.value
         for co_ord in positions:
             i = co_ord[0]
             j = co_ord[1]
-            self.base = Value(self.config['min_param_val'], 
-                self.config['max_param_val'])
+            self.base = Value(min_param_val, 
+                max_param_val)
             self.genes[i].values[j] = self.base.value
         for gene_no in freaks:
             freak = self.genes[gene_no].values
-            new_len = random.randint(self.config['min_len'], self.config['max_len'])
+            new_len = random.randint(min_len, max_len)
             if len(freak) >= new_len:
                 freak = freak[:new_len]
             else:
                 while new_len > len(freak):
-                    self.base = Value(self.config['min_param_val'], 
-                        self.config['max_param_val'])
+                    self.base = Value(min_param_val, 
+                        max_param_val)
                     freak.append(self.base.value)
             self.genes[gene_no].values = freak
         return None
+    
     
     def pair_list(self, tall, short):
         """input: list, list (len <= first list)
