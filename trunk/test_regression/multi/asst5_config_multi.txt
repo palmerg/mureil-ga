@@ -23,7 +23,7 @@ min_param_val: 0
 max_param_val: 10000
 timestep_mins: 60
 time_period_yrs: 10
-carbon_price: {2010: 100, 2020: 50, 2030: 75, 2040: 100, 2050:150}
+carbon_price: {2010: 25, 2020: 50, 2030: 75, 2040: 100, 2050:150}
 #variable_cost_mult: 240
 #time_scale_up_mult: 240
 

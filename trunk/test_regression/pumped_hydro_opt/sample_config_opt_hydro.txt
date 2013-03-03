@@ -38,7 +38,7 @@ processes: 0
 seed: 12345
 
 [Solar]
-model: generator.txmultivariablegenerator.TxMultiVariableGeneratorLinearInstall
+model: generator.txmultivariablegenerator.TxMultiVariableGeneratorBase
 capital_cost: 1.0
 #capex: 50.0
 size: 50
@@ -47,7 +47,7 @@ detail_type: Solar_Thermal
 data_name: ts_solar
 
 [Wind]
-model: generator.txmultivariablegenerator.TxMultiVariableGeneratorLinearInstall
+model: generator.txmultivariablegenerator.TxMultiVariableGeneratorBase
 #capex: 3.0
 capital_cost: 1.2
 size: 2.5

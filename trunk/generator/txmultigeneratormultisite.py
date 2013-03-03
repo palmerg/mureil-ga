@@ -84,6 +84,8 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
                 each optimisation param, in order.
 
             capital_cost: float, default 0 - cost in $M per MW for new capacity.
+            install_cost: float, default 0 - cost in $M per site, when site has an
+                installation from this generator for the first time.
             decommissioning_cost: float, optional (default 0) - cost in $M per MW for 
                 decommissioning.
             lifetime_yrs: float, default 20 - the time in years that new capacity lasts
@@ -98,6 +100,7 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             ('params_to_site_data_string', mureilbuilder.make_int_list, ''),
             ('decommissioning_cost', float, 0),
             ('capital_cost', float, 0),
+            ('install_cost', float, 0),
             ('time_period_yrs', float, None),
             ('lifetime_yrs', float, 20),
             ('size', float, 1.0),
@@ -196,6 +199,10 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
                 [[site_index, capacity, build_date, decommissioning_period],
                 ...]
         """
+
+        # Check if the startup data is empty. If so, just return.
+        if len(startup_data) == 0:
+            return
 
         # Find out which build periods are covered.
         startup_data = numpy.array(startup_data)
@@ -417,9 +424,11 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         period by the new capacity, for this site.
         
         This is a useful function for generators to override to implement
-        cost functions that depend on the existing installed capacity. The
-        implementation here simply multiplies by a capital cost per unit
-        of new capacity.
+        cost functions that depend on the existing installed capacity. 
+
+        This function charges a per-MW cost plus an install figure if all
+        the current capacity is new, and the site has not been used before
+        for this type of generator.
         
         Inputs: 
             site_data: a pair of lists - (current_capacity, history), each 
@@ -433,10 +442,20 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             new_capacity: the total new capacity installed at this site
         """
         
-        new_cap = sum([tup[0] for tup in site_data[0] if (tup[1] == period)])
+        new_cap_list = [tup[0] for tup in site_data[0] if (tup[1] == period)] 
+        new_cap = sum(new_cap_list)
 
         capacity_cost = self.period_configs[period]['capital_cost']
         this_cost = new_cap * capacity_cost
+
+        install_cost = self.period_configs[period]['install_cost']
+        if install_cost > 0:
+            # check if all the current capacity is new
+            if len(new_cap_list) == len(site_data[0]):
+                # and check if the site has been used before, ever
+                if len(site_data[1]) == 0:
+                    # the site is new, so charge the 'install' as well
+                    this_cost += install_cost
     
         return this_cost, new_cap        
             
@@ -490,8 +509,8 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         supply = numpy.sum(supply_list, axis=0)
         
         # Compute the total variable costs, including carbon cost, for the timeseries, scaled up
-        cost = (numpy.sum(variable_cost_list, axis=0) + 
-            (numpy.sum(carbon_emissions_list, axis=0) * curr_config['carbon_price_m']) * (
+        cost = ((numpy.sum(variable_cost_list, axis=0) + 
+            (numpy.sum(carbon_emissions_list, axis=0) * curr_config['carbon_price_m'])) * (
             curr_config['variable_cost_mult']))
                 
         # Do the decommissioning

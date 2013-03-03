@@ -173,6 +173,12 @@ class ConfigurableMultiBase(ConfigurableBase):
         self.complete_configuration_post_expand()
         
         
+    def update_config_multi(self, new_config, period):
+        """Update the current config values with new_config, for all parameters
+        in new_config.
+        """
+        self.period_configs[period].update(new_config)
+
     def complete_configuration_pre_expand(self):
         pass
 

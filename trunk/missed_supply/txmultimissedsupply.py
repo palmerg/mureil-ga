@@ -151,7 +151,7 @@ class TxMultiLinearMissedSupply(txmultigeneratorbase.TxMultiGeneratorBase):
             results['new_capacity'] = []
             results['supply'] = supply_list
             results['variable_cost_period'] = variable_cost_list * curr_config['variable_cost_mult']
-            results['carbon_emissions_period'] = 0
+            results['carbon_emissions_period'] = numpy.array([0])
             results['total_supply_period'] = (curr_config['time_scale_up_mult'] * numpy.sum(supply) *
                 curr_config['timestep_hrs'])
             results['other'] = other_list

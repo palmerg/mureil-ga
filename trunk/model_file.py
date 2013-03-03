@@ -4,7 +4,7 @@
 import rungedemo
 from collections import defaultdict
 import argparse
-#import json;
+import json;
 
 flags = ['-f', 'GEconfig.txt', '-l', 'GEConfig.log']
 

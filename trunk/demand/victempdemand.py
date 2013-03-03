@@ -157,10 +157,9 @@ class VicTempDemand(singlepassgenerator.SinglePassGeneratorBase):
         total_design = total_design/200.0
         total_dsm = total_dsm/600.0
 
-        ### TODO - does this weatherfac feed into the formula somewhere?
         weatherfac = self.config['weatherfac'] * (1 - total_design)
         
-        model, error = self.bottom_up()
+        model, error = self.bottom_up(weatherfac)
 
         industry    = model['industry']
         residential = model['residential']
@@ -190,7 +189,7 @@ class VicTempDemand(singlepassgenerator.SinglePassGeneratorBase):
         return cost, output
 
 
-    def bottom_up(self):
+    def bottom_up(self, weatherfac):
 
         #increases in demand in 2010,2020,2030,2040,2050
         runyear_fac = {'2010':1.0,'2020':1.2,'2030':1.4,'2040':1.6,'2050':1.8}
@@ -249,11 +248,11 @@ class VicTempDemand(singlepassgenerator.SinglePassGeneratorBase):
 
         commercial   = (self.config['background']/2 + 
                         business_rep * self.config['businessfac'] + 
-                        teffect * self.config['weatherfac']/2)
+                        teffect * weatherfac/2)
                         
         residential  = (self.config['background']/2 + 
                         awake_rep * self.config['resifac'] + 
-                        teffect * self.config['weatherfac']/2)
+                        teffect * weatherfac/2)
 
         industry     = industry    * runyear_fac[self.config['year']]
         residential  = residential * runyear_fac[self.config['year']]

@@ -351,7 +351,7 @@ class VicTempDemand(txmultigeneratorbase.TxMultiGeneratorBase):
         supply = supply_list[0,:]
 
         # Compute the total variable costs - carbon emissions are zero for demand 
-	cost = 0
+        cost = 0
 
         if not full_results:
             return site_indices, cost, supply
@@ -366,7 +366,7 @@ class VicTempDemand(txmultigeneratorbase.TxMultiGeneratorBase):
             results['new_capacity'] = []
             results['supply'] = supply_list
             results['variable_cost_period'] = variable_cost_list * curr_config['variable_cost_mult']
-            results['carbon_emissions_period'] = 0
+            results['carbon_emissions_period'] = np.array([0])
             results['total_supply_period'] = (curr_config['time_scale_up_mult'] * np.sum(supply) *
                 curr_config['timestep_hrs'])
             results['other'] = other_list
