@@ -112,6 +112,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         # Now set some more configs, and check that the expand_config works.
         tmg.config['size'] = {2000: 10, 2010: 20, 2030: 30}
         tmg.config['capital_cost'] = {2000: 5, 2010: 6, 2020: 7, 2030: 8}
+        tmg.config['install_cost'] = 0
         tmg.config['decommissioning_cost'] = {2000: 0.1, 2010: 0.2}
         tmg.config['time_period_yrs'] = 10
         tmg.config['lifetime_yrs'] = {2000: 10, 2020: 30}
@@ -123,6 +124,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
             'lifetime_yrs': 10,
+            'install_cost': 0,
             'timestep_hrs': 1.0,
             'capital_cost': 5,
             'decommissioning_cost': 0.1,
@@ -131,6 +133,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
             'timestep_hrs': 1.0,
+            'install_cost': 0,
             'lifetime_yrs': 10,
             'capital_cost': 5,
             'decommissioning_cost': 0.1,
@@ -139,6 +142,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
             'timestep_hrs': 1.0,
+            'install_cost': 0,
             'lifetime_yrs': 10,
             'capital_cost': 6,
             'decommissioning_cost': 0.2,
@@ -147,6 +151,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
             'lifetime_yrs': 30,
+            'install_cost': 0,
             'timestep_hrs': 1.0,
             'capital_cost': 7,
             'decommissioning_cost': 0.2,
@@ -155,6 +160,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'startup_data_name': 'gen_startup',
             'time_period_yrs': 10,
             'lifetime_yrs': 30,
+            'install_cost': 0,
             'capital_cost': 8,
             'timestep_hrs': 1.0,
             'decommissioning_cost': 0.2,
@@ -165,6 +171,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'lifetime_yrs': 30,
             'timestep_hrs': 1.0,
             'capital_cost': 8,
+            'install_cost': 0,
             'decommissioning_cost': 0.2,
             'params_to_site_data_name': 'gen_site_map'}
         exp_pc[2050] = {'size': 30, 
@@ -172,6 +179,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'time_period_yrs': 10,
             'lifetime_yrs': 30,
             'capital_cost': 8,
+            'install_cost': 0,
             'timestep_hrs': 1.0,
             'decommissioning_cost': 0.2,
             'params_to_site_data_name': 'gen_site_map'}
@@ -299,6 +307,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'timestep_hrs': 1.0,
             'section': 'Generator',
             'startup_data_string': None,
+            'install_cost': 0,
             'params_to_site_data_string': [],
             'start_min_param': 1e20,
             'start_max_param': 1e20,
@@ -312,6 +321,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
             'startup_data_name': '',
             'time_scale_up_mult': 1.0,
             'carbon_price_m': 0.0,
+            'install_cost': 0,
             'startup_data_string': None,
             'params_to_site_data_string': [],
             'start_min_param': 1e20,
@@ -324,6 +334,7 @@ class TestUpdateStateNewPeriod(unittest.TestCase):
         exp_pc[2020] = {'size': 20.0, 
             'time_period_yrs': 10,
             'variable_cost_mult': 1.0,
+            'install_cost': 0,
             'time_scale_up_mult': 1.0,
             'timestep_hrs': 1.0,
             'params_to_site_data_name': '',
