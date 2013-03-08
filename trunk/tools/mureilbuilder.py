@@ -133,6 +133,8 @@ def read_flags(flags, alt_args_list=None):
         --processes number: Number of processes to spawn for parallel processing
         --output_file filename: Name of file to write output to
         --do_plots {True|False}: Draw pretty pictures when done
+        --run_periods periods: Set the periods to run in a multi-period sim. Surround
+             the list of periods in double-quotes e.g. --run_periods "2010 2020".
     
     Details on alt_args_list format:
         args_list is a dict.

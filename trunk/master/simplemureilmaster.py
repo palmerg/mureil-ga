@@ -150,6 +150,35 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
     
     
     def get_config_spec(self):
+        """Return a list of tuples of format (name, conversion function, default),
+        e.g. ('capex', float, 2.0). Put None if no conversion required, or if no
+        default value, e.g. ('name', None, None)
+
+        Configuration:
+            algorithm: The name of the configuration file section specifying the algorithm class to use and
+                its configuration parameters. Defaults to 'Algorithm'.
+            data: The name of the configuration file section specifying the data class to use and its
+                configuration parameters. Defaults to 'Data'.
+            global: The name of the configuration file section specifying the global configuration parameters.
+                Defaults to 'Global'.
+
+            dispatch_order: a list of strings specifying the names of the generator models to dispatch, in order,
+                to meet the demand. All of these models then require a parameter defining the configuration file 
+                section where they are configured. e.g. dispatch_order: solar wind gas. This requires additional
+                parameters, for example solar: Solar, wind: Wind and gas: Instant_Gas to be defined, and corresponding
+                sections Solar, Wind and Instant_Gas to configure those models.
+
+            iterations: The number of iterations of the algorithm to execute. Defaults to 100.
+
+            output_file: The filename to write the final output data to. Defaults to 'mureil.pkl'.
+            output_frequency: Defaults to 500. After the first iteration and every output_frequency after
+                that, report on the simulation status.
+            do_plots: Defaults to False. If True, output plots every output_frequency and at the end
+                of the run.
+
+            optim_type: Defaults to 'missed_supply'. Either 'missed_supply' or 'match_demand'. 
+                'match_demand' is a legacy case that may not be maintained. 
+        """
         return [
             ('algorithm', None, 'Algorithm'),
             ('data', None, 'Data'),
