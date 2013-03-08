@@ -61,7 +61,7 @@ startup_data_string: [[55, 100, 2000, 2030]]
 startup_data_name: ts_wind_startup
 
 [WindInstall]
-model: generator.txmultivariablegenerator.TxMultiVariableGeneratorLinearInstall
+model: generator.txmultivariablegenerator.TxMultiVariableGeneratorBase
 capital_cost: 2.0
 install_cost: 20000.0
 size: 10
