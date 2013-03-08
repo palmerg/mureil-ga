@@ -62,8 +62,11 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         
         # Get the global variables
         mureilbuilder.check_section_exists(full_config, self.config['global'])
-        self.global_config = full_config[self.config['global']]
-        globalconfig.pre_data_global_calcs(self.global_config)
+        if 'model' not in full_config[self.config['global']]:
+            full_config[self.config['global']]['model'] = 'tools.globalconfig.GlobalBase'
+        self.global_calc = mureilbuilder.create_instance(full_config, None, self.config['global'], 
+            mureilbase.ConfigurableInterface)    
+        self.global_config = self.global_calc.get_config()
 
         # Now check the dispatch_order, to get a list of the generators
         for gen in self.config['dispatch_order']:
@@ -77,8 +80,9 @@ class SimpleMureilMaster(mureilbase.MasterInterface, configurablebase.Configurab
         # Set up the data class and get the data, and compute the global parameters
         self.data = mureilbuilder.create_instance(full_config, self.global_config, self.config['data'], 
             mureilbase.DataSinglePassInterface)
-        self.global_config['data_ts_length'] = self.data.get_ts_length()
-        globalconfig.post_data_global_calcs(self.global_config)
+        self.global_calc.update_config({'data_ts_length': self.data.get_ts_length()})
+        self.global_calc.post_data_global_calcs()
+        self.global_config = self.global_calc.get_config()
         
         # Instantiate the generator objects, set their data, determine their param requirements
         param_count = 0
