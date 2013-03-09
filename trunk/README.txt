@@ -1,6 +1,11 @@
 README - simple instructions on how to run MUREIL
 Marcelle Gannon marcelle.gannon@gmail.com
-11 Feb 2013
+9 March 2013
+
+----------
+This README.txt is superseded by the document in doc/mureil_software.pdf.
+----------
+
 
 ----------
 Pre-configured example
