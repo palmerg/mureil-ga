@@ -397,7 +397,7 @@ class VariableGeneratorAsymptCost(VariableGeneratorBasic):
         cost = cost_temp.sum()
 
         active_sites = (params > 0)
-        cost_distance = self.distances[active_sites == True].sum() / 1000 #Get it into units of $M/km
+        cost_distance = self.distances[active_sites == True].sum()  #Already in units of $M/km
 
         cost += cost_distance
         
