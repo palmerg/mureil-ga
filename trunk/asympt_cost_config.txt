@@ -4,7 +4,7 @@
 model: master.simplemureilmaster.SimpleMureilMaster
 optim_type: missed_supply
 iterations: 10000
-output_file: asympt_config_II.pkl
+output_file: asympt_config_full_II.pkl
 algorithm: Algorithm
 solar: Solar
 wind: Wind
@@ -13,7 +13,8 @@ fossil: Fossil
 missed_supply: MissedSupply
 data: Data
 global: Global
-dispatch_order: solar wind hydro fossil missed_supply
+dispatch_order: solar wind hydro fossil
+#dispatch_order: solar wind hydro fossil missed_supply
 
 [Global]
 min_param_val: -2000
@@ -23,13 +24,13 @@ time_period_yrs: 20
 
 [Algorithm]
 model: algorithm.geneticalgorithm.Engine
-base_mute: 0.01
+base_mute: 0.001
 gene_mute: 0.1
 pop_size: 100
 mort: 0.5
 nuke_power: 20
-processes: 4
-seed: 12345
+processes: 3
+seed: 463647
 
 [Solar]
 model: generator.singlepassvariablegenerator.VariableGeneratorAsymptCost
@@ -70,4 +71,4 @@ model: missed_supply.missedsupply.LinearMissedSupply
 cost_per_mwh: 0.005
 
 [Data]
-model: data.rhuva_data2.Data
+model: data.rhuva_data_dist.Data
