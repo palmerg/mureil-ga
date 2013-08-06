@@ -55,7 +55,7 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
 
         Outputs:
             flags: a dict with:
-                dispatchable: is the generator dispatchable? Default False.
+                dispatch: one of 'semischeduled', 'instant', 'ramp'
                 technology: for use in aggregation later - what is the broad type
                     of generator - from e.g. 'wind', 'solar_pv', 'coal', 'gas' etc,
                     default 'generic'
@@ -63,7 +63,7 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
                     'demand_management', 'missed_supply', default 'generator'
         """
         flags = {}
-        flags['dispatchable'] = False
+        flags['dispatch'] = 'instant_dispatch'
         flags['technology'] = 'generic'
         flags['model_type'] = 'generator'
         
@@ -230,6 +230,21 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
         return 0, 0
         
         
+    def calculate_dispatch_offer(self, period, param=None):
+        """Calculate the dispatch offer (most simply, the SRMC) at this
+        period for all sites in this model. 
+        
+        Inputs:
+            period: the current period, an integer
+            param: optional arbitrary parameters - for example may be used to
+                   specify a level of current power to compute the SRMC.
+                   
+        Outputs:
+            offer: the offer, in $/MWh
+        """
+        return 100000
+        
+        
     def get_capacity(self, state_handle):
         """Extracts from the 'state_handle' parameter the current total capacity at each active site.
         
@@ -258,6 +273,38 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
         """
         return []
 
+
+    def calculate_variable_costs(self, state_handle, site_indices, schedule):
+        """Calculate variable costs and carbon based on schedule.
+        
+        Inputs:
+            state_handle
+            site_indices
+            schedule: The scheduled output, a set of timeseries
+            
+        Outputs:
+            variable_cost, carbon, other
+        """
+        raise mureilexception.ProgramException(
+            'Function calculate_variable_costs called by ' + self.__class__.name + 
+            ', falling through to TxMultiGeneratorBase which does not provide an implementation.')
+
+
+    def calculate_outputs(self, state_handle, ts_length):
+        """Calculate the maximum outputs, before scheduling.
+        
+        Inputs:
+            state_handle
+            ts_length: an integer - the length of the timeseries
+            
+        Outputs:
+            site_indices: the list of sites with active capacity
+            output: a set of timeseries, corresponding to site_indices
+        """
+        raise mureilexception.ProgramException(
+            'Function calculate_outputs called by ' + self.__class__.name + 
+            ', falling through to TxMultiGeneratorBase which does not provide an implementation.')
+        
 
     def calculate_outputs_and_costs(self, state_handle, supply_request, max_supply=[], price=[]):
         """Calculate the supply output of each site at each point in the timeseries. Return
@@ -351,7 +398,7 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
 
  
     def calculate_time_period_full(self, state_handle, period, new_params, supply_request, 
-        max_supply=[], price=[], make_string=False, do_decommissioning=True):
+        max_supply={}, price=[], make_string=False, do_decommissioning=True):
         """Calculate, for this time period, the supply from each site, the capacity at
         each site, the variable cost, capital cost and carbon emissions. Expose all of 
         the parameters and require the transmission and/or economic models to do the
@@ -365,7 +412,7 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
             supply_request: a timeseries indicating the total requested supply 
                 for this generator
             max_supply: optional - a set of timeseries indicating any curtailing
-                due to transmission restrictions.
+                due to transmission restrictions - as a dict of {site_index: timeseries}
             price: optional - a timeseries indicating the market price in $/MWh
             make_string: if True, return as the final output, a string describing the
                 current state and outputs.
@@ -417,6 +464,23 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
         """
         raise mureilexception.ProgramException(
             'Function recalculate_time_period_full called by ' + self.__class__.name + 
+            ', falling through to TxMultiGeneratorBase which does not provide an implementation.')
+
+
+    def calculate_costs_from_schedule_and_finalise(self, state_handle, schedule): 
+        """Calculate the costs, given the schedule from the dispatcher.
+        Finalise the decommissioning for that period.
+        Inputs:
+            state_handle: 
+                as for calculate_time_period_full in txmultigeneratorbase.py
+            schedule: a set of timeseries for each active site, as previously
+                listed in the call to get_offers_* 
+        
+        Outputs:
+                as for calculate_time_period_full in txmultigeneratorbase.py
+        """
+        raise mureilexception.ProgramException(
+            'Function calculate_costs_from_schedule_and_finalise called by ' + self.__class__.name + 
             ', falling through to TxMultiGeneratorBase which does not provide an implementation.')
 
 

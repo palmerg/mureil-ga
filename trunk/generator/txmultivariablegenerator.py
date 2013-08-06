@@ -29,11 +29,15 @@
 
 from tools import configurablebase, mureilexception
 from generator import txmultigeneratormultisite
+from master import interfacesflowmaster
+
 import copy
 import numpy
 import string
 
-class TxMultiVariableGeneratorBase(txmultigeneratormultisite.TxMultiGeneratorMultiSite):
+
+class TxMultiVariableGeneratorBase(txmultigeneratormultisite.TxMultiGeneratorMultiSite,
+    interfacesflowmaster.InterfaceSemiScheduledDispatch):
     """A simple implementation of a variable generator, providing 
     per-unit capital costs.
     """
@@ -43,6 +47,7 @@ class TxMultiVariableGeneratorBase(txmultigeneratormultisite.TxMultiGeneratorMul
         """
         flags = txmultigeneratormultisite.TxMultiGeneratorMultiSite.get_details(self)
         flags['technology'] = self.config['tech_type']
+        flags['dispatch'] = 'semischeduled'
         
         return flags
         
@@ -143,18 +148,43 @@ class TxMultiVariableGeneratorBase(txmultigeneratormultisite.TxMultiGeneratorMul
                     ' was requested by the model in section ' + self.config['section'] +
                     ' but the maximum index in the data array is ' + str(max_data), {})
 
-        
-    def calculate_outputs_and_costs(self, state_handle, supply_request, max_supply=[], price=[]):
-        """Implement calculate_outputs_and_costs as defined in TxMultiGeneratorBase, for the
-        variable generators.
+
+    def calculate_dispatch_offer(self, period, param=None):
+        """Calculate the dispatch offer as the SRMC. This is the VOM for variable generators.
         """
+        return self.period_configs[period]['vom']
         
+
+    def get_offers_semischeduled(self, state_handle, ts_length):
+        """Get offers for this semi-scheduled generator.
+        
+        Outputs:
+            site_indices: the identifying indices of each site with active capacity. All lists of
+                    sites below will correspond with this list.
+            offer_price: the offer price, one per site (interpreted as same for all timesteps)
+            quantity: the offer quantity, one timeseries per site, in MW.
+        """
+        offer_price = self.calculate_dispatch_offer(state_handle['curr_period'])
+        site_indices, quantity = self.calculate_outputs(state_handle, ts_length) 
+        
+        return site_indices, offer_price, quantity
+        
+        
+    def calculate_outputs(self, state_handle, ts_length):
+        """Calculate the maximum outputs, before scheduling.
+        
+        Inputs:
+            state_handle
+            ts_length: an integer - the length of the timeseries
+            
+        Outputs:
+            site_indices: the list of sites with active capacity
+            output: a set of timeseries, corresponding to site_indices
+        """
         cap_list = state_handle['capacity']
         site_indices = self.get_site_indices(state_handle)
         num_sites = len(site_indices)
-        supply = numpy.zeros((num_sites, len(supply_request)))
-        vble_cost = numpy.zeros(num_sites)
-        carbon = numpy.zeros(num_sites)
+        output = numpy.zeros((num_sites, ts_length))
         
         for i in range(num_sites):
             site = site_indices[i]
@@ -163,9 +193,41 @@ class TxMultiVariableGeneratorBase(txmultigeneratormultisite.TxMultiGeneratorMul
             ### TODO - it may be expensive to have self.data this way -
             ### would it help to transpose it when it's read in, so
             ### the memory lines up better?
-            supply[i,:] = self.data[:,data_index] * total_cap
+            output[i,:] = self.data[:,data_index] * total_cap
+
+        return site_indices, output
         
-        return supply, vble_cost, carbon, {}
+        
+    def calculate_variable_costs(self, state_handle, site_indices, schedule):
+        """Calculate variable costs and carbon based on schedule.
+        
+        Inputs:
+            state_handle
+            site_indices
+            schedule: The scheduled output, a set of timeseries
+            
+        Outputs:
+            variable_cost, carbon, other
+        """
+        vom = self.period_configs[state_handle['curr_period']]['vom'] * 1e-6
+        num_sites = len(site_indices)
+        vble_cost = numpy.zeros(num_sites)
+        carbon = numpy.zeros(num_sites)
+        for i in range(num_sites):
+            vble_cost[i] = numpy.sum(schedule[i,:]) * vom
+        
+        return vble_cost, carbon, {}
+        
+        
+    def calculate_outputs_and_costs(self, state_handle, supply_request, max_supply=[], price=[]):
+        """Implement calculate_outputs_and_costs as defined in TxMultiGeneratorBase, for the
+        variable generators.
+        """
+        
+        site_indices, supply = self.calculate_outputs(state_handle, len(supply_request))
+        vble_cost, carbon, other = self.calculate_variable_costs(state_handle, site_indices, supply)
+                
+        return supply, vble_cost, carbon, other
         
 
     def get_simple_desc_string(self, results, state_handle):
@@ -184,5 +246,6 @@ class TxMultiVariableGeneratorBase(txmultigeneratormultisite.TxMultiGeneratorMul
         """
         
         return self.get_simple_desc_string(results, state_handle)
+
 
 

@@ -1,0 +1,20 @@
+DEBUG    : average score before: 0.000000
+CRITICAL : Run started at Tue Aug 06 12:53:24 2013
+DEBUG    : b_score = 0.000000
+DEBUG    : iteration: 0
+INFO     : Interim results at iteration 0
+INFO     : best gene was: [1000, 1000, 1000, 1000, 10000, 3000]
+INFO     : on loop 0, with score 0.000000
+DEBUG    : 1 nuke/s dropped
+DEBUG    : average score after: 0.000000
+INFO     : ======================================================
+CRITICAL : Execution stopped on unhandled exception
+Traceback (most recent call last):
+  File "../..\runmureil.py", line 45, in runmureil
+    results = master.run()
+  File "../..\master\txmultimasterflow.py", line 300, in run
+    self.output_results(iteration=i)
+  File "../..\master\txmultimasterflow.py", line 325, in output_results
+    results['totals']['cost'], results['totals']['carbon'] * 1e-6, results['totals']['terminal_value']))
+KeyError: 'totals'
+DEBUG    : Finalising geneticalgorithm

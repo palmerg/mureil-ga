@@ -42,7 +42,6 @@ class VicTempDemand(txmultigeneratorbase.TxMultiGeneratorBase):
         as defined in TxMultiGeneratorBase.
         """
         flags = txmultigeneratorbase.TxMultiGeneratorBase.get_details(self)
-        flags['dispatchable'] = True
         flags['model_type'] = 'demand_source'
 
         return flags

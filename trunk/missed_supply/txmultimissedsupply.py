@@ -41,7 +41,6 @@ class TxMultiLinearMissedSupply(txmultigeneratorbase.TxMultiGeneratorBase):
         as defined in TxMultiGeneratorBase.
         """
         flags = txmultigeneratorbase.TxMultiGeneratorBase.get_details(self)
-        flags['dispatchable'] = True
         flags['model_type'] = 'missed_supply'
         
         return flags
