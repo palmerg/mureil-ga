@@ -29,11 +29,14 @@
 
 from tools import configurablebase, mureilexception
 from generator import txmultigeneratormultisite
+from master import interfacesflowmaster
+
 import copy
 import numpy
 
 
-class TxMultiInstantOptimisableThermal(txmultigeneratormultisite.TxMultiGeneratorMultiSite):
+class TxMultiInstantOptimisableThermal(txmultigeneratormultisite.TxMultiGeneratorMultiSite,
+    interfacesflowmaster.InterfaceInstantDispatch):
     """A simple implementation of an instant-output thermal generator, such
     as a peaking gas turbine, which requires an optimisation parameter. This
     implementation handles only one site.
@@ -43,7 +46,7 @@ class TxMultiInstantOptimisableThermal(txmultigeneratormultisite.TxMultiGenerato
         """Return a list of flags indicating the properties of the generator.
         """
         flags = txmultigeneratormultisite.TxMultiGeneratorMultiSite.get_details(self)
-        flags['dispatchable'] = True
+        flags['dispatch'] = 'instant'
         flags['technology'] = self.config['tech_type']
         
         return flags
@@ -99,6 +102,70 @@ class TxMultiInstantOptimisableThermal(txmultigeneratormultisite.TxMultiGenerato
             self.config['fuel_price_mwh_m'] = fuel_price / 1e6
         
 
+    def calculate_dispatch_offer(self, period, param=None):
+        """Calculate the dispatch offer in $/MWh based on the carbon intensity, fuel price and
+        vom.
+        """
+        
+        this_conf = self.period_configs[period]
+        return (this_conf['fuel_price_mwh'] + this_conf['carbon_price_m'] * 1e6 * this_conf['carbon_intensity'] +
+            this_conf['vom'])
+
+
+    def get_offers_instant(self, state_handle):
+        """Get offers for this instant generator.
+        
+        Outputs:
+            site_indices: the identifying indices of each site with active capacity. All lists of
+                    sites below will correspond with this list.
+            offer_price: the offer price, one per site (interpreted as same for all timesteps)
+            quantity: the offer quantity, one timeseries per site, in MW.
+        """
+        offer_price = self.calculate_dispatch_offer(state_handle['curr_period'])
+        quantity = self.get_capacity(state_handle)
+        site_indices = self.get_site_indices(state_handle) 
+
+        return site_indices, offer_price, quantity
+
+
+    def calculate_variable_costs(self, state_handle, site_indices, schedule):
+        """Calculate variable costs and carbon based on schedule.
+        
+        Inputs:
+            state_handle
+            site_indices
+            schedule: The scheduled output, a set of timeseries
+            
+        Outputs:
+            variable_cost, carbon, other
+        """
+        num_sites = len(site_indices)
+        vble_cost = numpy.zeros(num_sites)
+        carbon = numpy.zeros(num_sites)
+        
+        this_conf = self.period_configs[state_handle['curr_period']]
+        vom_m = this_conf['vom'] * 1e-6
+
+        ### This model only handles a single site
+        if num_sites > 0:
+            i = 0
+            site = site_indices[i]
+
+            total_supply = numpy.sum(schedule[i,:])
+            vble_cost[i] = numpy.sum(schedule[i,:]) * self.config['timestep_hrs'] * (
+                this_conf['fuel_price_mwh_m'] + vom_m)
+
+            ### TODO - this could use the full set of carbon intensity values over time.
+            ### Here it assumes that all capacity, regardless of when it was built, has
+            ### the same carbon intensity as the current period. 
+            ### This would require allocating the supply to
+            ### capacity from each period in turn, ordering by carbon intensity.
+            carbon[i] = (total_supply * this_conf['carbon_intensity'] *
+                self.config['timestep_hrs'])
+        
+        return vble_cost, carbon, {}
+
+
     def calculate_outputs_and_costs(self, state_handle, supply_request, max_supply=[], price=[]):
         """Implement calculate_outputs_and_costs as defined by TxMultiGeneratorBase, for the 
         instant-thermal model.
@@ -118,10 +185,6 @@ class TxMultiInstantOptimisableThermal(txmultigeneratormultisite.TxMultiGenerato
                 'TxMultiInstantOptimsableThermal class handles only one site.', {})
 
         supply = numpy.zeros((num_sites, len(supply_request)))
-        vble_cost = numpy.zeros(num_sites)
-        carbon = numpy.zeros(num_sites)
-        
-        this_conf = self.period_configs[state_handle['curr_period']]
 
         ### This model only handles a single site
         if num_sites > 0:
@@ -130,19 +193,10 @@ class TxMultiInstantOptimisableThermal(txmultigeneratormultisite.TxMultiGenerato
             capacity = [tup[0] for tup in cap_list[site]]
             max_cap = numpy.sum(capacity)
             supply[i,:] = supply_request.clip(0, max_cap)
-
-            total_supply = numpy.sum(supply[i,:])
-            vble_cost[i] = numpy.sum(supply[i,:]) * self.config['timestep_hrs'] * (
-                this_conf['fuel_price_mwh_m'])
-
-            ### TODO - this could use the full set of carbon intensity values over time.
-            ### Here it assumes that all capacity, regardless of when it was built, has
-            ### the same carbon intensity as the current period. 
-            ### This would require allocating the supply to
-            ### capacity from each period in turn, ordering by carbon intensity.
-            carbon[i] = (total_supply * this_conf['carbon_intensity'] *
-                self.config['timestep_hrs'])
         
+        vble_cost, carbon, other = self.calculate_variable_costs(
+            state_handle, site_indices, supply)
+
         return supply, vble_cost, carbon, {}
         
 

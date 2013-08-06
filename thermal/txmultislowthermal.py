@@ -43,7 +43,7 @@ class TxMultiSlowOptimisableThermal(txmultigeneratormultisite.TxMultiGeneratorMu
         """Return a list of flags indicating the properties of the generator.
         """
         flags = txmultigeneratormultisite.TxMultiGeneratorMultiSite.get_details(self)
-        flags['dispatchable'] = True
+        flags['dispatch'] = 'ramp'
         flags['technology'] = self.config['tech_type']
         
         return flags

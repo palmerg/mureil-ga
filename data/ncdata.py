@@ -25,10 +25,12 @@
 #
 
 """Implements a Data class that reads in a list of variables from
-   netCDF files, on a single pass into an array.
+   netCDF files, on a single pass into an array. Also reads in 
+   a CSV matrix format.
 """
 
 import pupynere as nc
+import csv
 
 from data import datasinglepassbase
 from tools import mureilbuilder, mureiltypes, mureilexception
@@ -47,6 +49,13 @@ class Data(datasinglepassbase.DataSinglePassBase):
             'other_float_list', 'other_int_list']:
             for series_name in self.config[list_type]:
                 self.config_spec += [(series_name + '_vbl', None, series_name)]
+                self.config_spec += [(series_name + '_file', None, None)]
+        
+        # CSV format requires a header and a 'time' column (ignored)
+        # Will create a data object named series_name, and another named
+        # series_name_hdr.
+        for list_type in ['ts_csv_list']:
+            for series_name in self.config[list_type]:
                 self.config_spec += [(series_name + '_file', None, None)]
 
 
@@ -94,9 +103,38 @@ class Data(datasinglepassbase.DataSinglePassBase):
                     else:
                         self.data[series_name] = temp
 
+        for list_type in ['ts_csv_list']:
+            for series_name in self.config[list_type]:        
+                infile = self.config['dir'] + self.config[series_name + '_file']
+                temp = []
+                
+                try:
+                    with open(infile, 'rU') as n:
+                        reader = csv.reader(n)
+                        for row in reader:
+                            if reader.line_num == 1:
+                                self.data[series_name + '_hdr'] = row[1:]
+                            else:
+                                if reader.line_num == 2:
+                                    temp = [map(float, (row[1:]))]
+                                else:
+                                    temp.append(map(float, (row[1:])))
+
+                    self.data[series_name] = numpy.array(temp, dtype=float)
+                    if not mureiltypes.check_ndarray_float(temp, True):
+                        self.data[series_name] = numpy.array(temp, dtype=float)
+                    else:
+                        self.data[series_name] = temp
+
+                except:
+                    msg = ('File ' + infile + ' for data series ' + series_name +
+                        ' was not opened or had an error in reading.')
+                    raise mureilexception.ConfigException(msg, {})
+
+
         # Now apply the NaN filter to the ts lists, but note that the integer
         # ones are not identified as nan.
-        all_ts = self.config['ts_float_list'] + self.config['ts_int_list']
+        all_ts = self.config['ts_float_list'] + self.config['ts_int_list'] + self.config['ts_csv_list']
         
         if len(all_ts) == 0:
             self.ts_length = 0
@@ -160,6 +198,13 @@ class Data(datasinglepassbase.DataSinglePassBase):
         ts_wind_file: filename of netCDF file with wind data
         ts_wind_vbl: optional - the name of the variable within the netCDF file. Defaults to 
             the series name, here ts_wind.
+            
+        ts_csv_list: list of names of csv timeseries data - e.g. ts_demand_matrix. The data is read into 
+            series_name and the header into series_name_hdr. A timestamp column to the left is expected
+            and ignored. Data is read in as floats.
+            
+        and for each name in ts_csv_list, e.g. ts_demand_matrix:
+        ts_demand_matrix_file: string filename of the CSV file with the data.
         """
         return [
             ('description', None, 'None'),
@@ -167,6 +212,7 @@ class Data(datasinglepassbase.DataSinglePassBase):
             ('ts_float_list', mureilbuilder.make_string_list, []),
             ('ts_int_list', mureilbuilder.make_string_list, []),
             ('other_float_list', mureilbuilder.make_string_list, []),
-            ('other_int_list', mureilbuilder.make_string_list, [])
+            ('other_int_list', mureilbuilder.make_string_list, []),
+            ('ts_csv_list', mureilbuilder.make_string_list, [])
             ]
         

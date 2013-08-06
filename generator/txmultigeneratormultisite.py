@@ -71,7 +71,7 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             size: float, optional - relates param to new capacity
 
             carbon_price_m: float - carbon price in $M/tonne
-
+            
             startup_data_name: string, optional - the name of the data array that contains
                 data on startup capacities.
             startup_data_string: string, optional - a python format data array suitable for 
@@ -83,9 +83,12 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
                 listed separated by spaces, defining the site index corresponding to 
                 each optimisation param, in order.
 
+            vom: float, default 0 - variable operating and maintenance cost, in $/MWh, same for all sites
+
             capital_cost: float, default 0 - cost in $M per MW for new capacity.
             install_cost: float, default 0 - cost in $M per site, when site has an
                 installation from this generator for the first time.
+
             decommissioning_cost: float, optional (default 0) - cost in $M per MW for 
                 decommissioning.
             lifetime_yrs: float, default 20 - the time in years that new capacity lasts
@@ -99,6 +102,7 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             ('params_to_site_data_name', None, ''),
             ('params_to_site_data_string', mureilbuilder.make_int_list, ''),
             ('decommissioning_cost', float, 0),
+            ('vom', float, 0),
             ('capital_cost', float, 0),
             ('install_cost', float, 0),
             ('time_period_yrs', float, None),
@@ -564,7 +568,8 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
 
         if make_string:
             results['desc_string'] = self.get_full_desc_string(results, state_handle)
-            return results
+        
+        return results
 
 
     def recalculate_time_period_full(self, state_handle, results, supply_request, max_supply=[], price=[], make_string=False):
@@ -581,4 +586,35 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         else:
             return results        
 
+
+    def calculate_costs_from_schedule_and_finalise(self, state_handle, schedule): 
+        """Calculate the costs, given the schedule from the dispatcher.
+        Finalise the decommissioning for that period.
+        This assumes that update_state_new_period_params has been called previously,
+        and the offer quantities have been determined for the active sites.
+        
+        Inputs:
+            state_handle: 
+                as for calculate_time_period_full in txmultigeneratorbase.py
+            schedule: a set of timeseries for each active site, as previously
+                listed in the call to get_offers_* 
+        
+        Outputs:
+                as for calculate_time_period_full in txmultigeneratorbase.py
+        """
+        results = {}
+        site_indices = self.get_site_indices(state_handle)
+        results['site_indices'] = site_indices
+        results['capacity'] = self.get_capacity(state_handle)
+        dummy, results['new_capacity'] = self.calculate_new_capacity_cost(state_handle)
+        results['supply'] = schedule
+        results['variable_cost_ts'], results['carbon_emissions_ts'], results['other'] = (
+            self.calculate_variable_costs(state_handle, site_indices, schedule))
+        dummy, results['decommissioned'] = (
+            self.calculate_update_decommission(state_handle))
+
+        #if make_string:
+        #    results['desc_string'] = self.get_full_desc_string(results, state_handle)
+        
+        return results
         
