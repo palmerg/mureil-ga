@@ -64,6 +64,9 @@ class Engine(configurablebase.ConfigurableBase):
         random.seed(self.config['seed'])
         self.population = Pop(self.config)
 
+        ### TODO ### remove the need to score the pop before it starts? This makes
+        ### it hard to test the master as the master has to create it, but the
+        ### test would want to just call calc_cost itself.
         self.pop_score()
         self.clones_data = []
         self.best_gene_data = []

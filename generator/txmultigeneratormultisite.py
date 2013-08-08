@@ -587,7 +587,7 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
             return results        
 
 
-    def calculate_costs_from_schedule_and_finalise(self, state_handle, schedule): 
+    def calculate_costs_from_schedule_and_finalise(self, state_handle, schedule, make_string=False): 
         """Calculate the costs, given the schedule from the dispatcher.
         Finalise the decommissioning for that period.
         This assumes that update_state_new_period_params has been called previously,
@@ -606,15 +606,15 @@ class TxMultiGeneratorMultiSite(txmultigeneratorbase.TxMultiGeneratorBase):
         site_indices = self.get_site_indices(state_handle)
         results['site_indices'] = site_indices
         results['capacity'] = self.get_capacity(state_handle)
-        dummy, results['new_capacity'] = self.calculate_new_capacity_cost(state_handle)
+        results['new_capacity_total_cost'], results['new_capacity'] = self.calculate_new_capacity_cost(state_handle)
         results['supply'] = schedule
         results['variable_cost_ts'], results['carbon_emissions_ts'], results['other'] = (
             self.calculate_variable_costs(state_handle, site_indices, schedule))
-        dummy, results['decommissioned'] = (
+        results['decomm_total_cost'], results['decommissioned'] = (
             self.calculate_update_decommission(state_handle))
 
-        #if make_string:
-        #    results['desc_string'] = self.get_full_desc_string(results, state_handle)
+        if make_string:
+            results['desc_string'] = self.get_full_desc_string(results, state_handle)
         
         return results
         

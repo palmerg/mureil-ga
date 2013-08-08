@@ -165,11 +165,14 @@ class MarketClearingEngine(configurablebase.ConfigurableMultiBase):
             results: if success == True, a dict containing the following, or None:
                 scheduled_bids: a matrix of scheduled bids, corresponding to multi_demand
                 scheduled_offers: a matrix of scheduled offers, corresponding to multi_generation
-            success: True only if all optimisation steps were successful.
             solutions: The solutions object, for debug use.
+
+        Exceptions:
+            will raise SolverException if either the solver failed to reach an optimal
+                solution, or the solver was not run due to rejection by the 
+                reject_outright_proportion check on total demand and total supply.
         """
         solutions = []
-        success = True
         
         if multi_demand.size[1] != multi_generation.size[1]:
             msg = ('multi_demand.size[0] = ' + str(multi_demand.size[0]) + 
@@ -183,25 +186,17 @@ class MarketClearingEngine(configurablebase.ConfigurableMultiBase):
             tot_d = np.sum(multi_demand[:,j])
             tot_g = np.sum(multi_generation[:,j])
             if (tot_d / tot_g) > self.config['reject_outright_proportion']:
-                success = False
-                break
+                msg = 'Reject outright ' + str(tot_d / tot_g)
+                raise mureilexception.SolverException(msg, {'prop': tot_d / tot_g})
             self.update_program(market, multi_demand[:,j], multi_generation[:,j])
-            this_sol, ok = self.solve(market)
-            if ok:
-                solutions.append(this_sol)
-            else:
-                success = False
-                logger.warning('Opt failed step ' + str(j))
-                break
+            this_sol = self.solve(market)
+            solutions.append(this_sol)
     
-        if success:
-            results = {}
-            schedules = cvx.matrix([s['x'].T for s in solutions]).T
-            results['scheduled_bids'] = self.scheduled_bids(market, schedules)
-            results['scheduled_offers'] = self.scheduled_offers(market, schedules)
-            return results, success, solutions
-        else:
-            return None, False, None
+        results = {}
+        schedules = cvx.matrix([s['x'].T for s in solutions]).T
+        results['scheduled_bids'] = self.scheduled_bids(market, schedules)
+        results['scheduled_offers'] = self.scheduled_offers(market, schedules)
+        return results, solutions
 
 
     def build_objective(self, bids, offers, dc_lines):
@@ -223,16 +218,18 @@ class MarketClearingEngine(configurablebase.ConfigurableMultiBase):
             
         Outputs:
             solution: a solution object from solvers.lp
-            ok: True if the solution is optimal. If False, a message is logged in the log.
+            
+        Exception:
+            raises mureilexception.SolverException if the solver does not find an optimal solution
         """
         solution = solvers.lp(market.objective,
                           market.inequality_constraint_lhs, market.inequality_constraint_rhs,
                           market.conservation_of_energy_lhs, market.conservation_of_energy_rhs)
-        ok = True
+
         if not (solution['status'] == 'optimal'):
-            logger.warning('Solver status ' + solution['status'])
-            ok = False
-        return solution, ok
+            msg = 'Solver status ' + solution['status']
+            raise mureilexception.SolverException(msg, {'sol': solution})
+        return solution
 
 
     def update_program(self, market, new_bids, new_offers):
