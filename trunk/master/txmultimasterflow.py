@@ -55,8 +55,8 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
         full_conf[self.config['demand']] = self.demand.get_config()
         full_conf[self.config['transmission']] = self.transmission.get_config()
 
-        for gen_type in self.generators:
-            full_conf[self.config[gen_type]] = self.gen_list[gen_type].get_config()
+        for i, gen_type in enumerate(self.generators):
+            full_conf[self.config[gen_type]] = self.gen_list[i].get_config()
 
         return full_conf
 
@@ -91,6 +91,14 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
         self.global_calc.post_data_global_calcs()
         self.global_config = self.global_calc.get_config()
 
+        ## TODO ## MG - have a proper think about why the globals weren't applied
+        # to the master previously. What I've done here will override any values
+        # in the 'master' with those in the 'global', which shouldn't be an issue, but
+        # could be documented ...
+        
+        self.config.update(self.global_config)
+        self.expand_config(self.config['run_periods'])
+
         # Now instantiate the demand model
         self.demand = mureilbuilder.create_instance(full_config, self.global_config, 
             self.config['demand'], configurablebase.ConfigurableMultiBase,
@@ -107,6 +115,8 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
         # Instantiate the generator objects, set their data, determine their param requirements,
         # and separate by dispatch type.
         param_count = 0
+        
+        # gen_list, gen_params are indexed by position in self.generators
         self.gen_list = [None] * len(self.generators)
         self.gen_params = [None] * len(self.generators)
         
@@ -124,6 +134,7 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
             gen = mureilbuilder.create_instance(full_config, self.global_config, 
                 self.config[gen_type], txmultigeneratorbase.TxMultiGeneratorBase,
                 self.config['run_periods'])
+                
             self.gen_list[i] = gen
 
             gen_details = gen.get_details()
@@ -158,6 +169,8 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                     param_count + params_req)
 
                 run_period_len = len(self.config['run_periods'])
+
+                ### TODO ### get this messy and general code out into a function
                 (starts_min, starts_max) = gen.get_param_starts()
                 starts_min = numpy.array(starts_min)
                 starts_max = numpy.array(starts_max)
@@ -274,7 +287,7 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
             ('iterations', int, 100),
             ('output_file', None, 'mureil.pkl'),
             ('generators', mureilbuilder.make_string_list, None),
-            ('dispatch_fail_price', float, 1000000),
+            ('dispatch_fail_price', float, 1000000.0),
             ('do_plots', mureilbuilder.string_to_bool, False),
             ('output_frequency', int, 500),
             ('run_periods', mureilbuilder.make_int_list, [2010])
@@ -342,10 +355,14 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                         period_results['totals']['cost'], 
                         period_results['totals']['carbon'] * 1e-6))
 
+                    ## TODO - output demand data
+
                     #if 'demand' in self.dispatch_order:
                     #    ts_demand[period] = period_results['generators']['demand']['other']['ts_demand']
                     #else:
                     #    ts_demand[period] = self.data.get_timeseries('ts_demand')
+
+                    ## TODO - save dispatch data too
 
                     #period_results['totals']['demand'] = (numpy.sum(ts_demand[period]) *
                     #    self.global_config['time_scale_up_mult'] * self.global_config['timestep_hrs'])
@@ -427,99 +444,93 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
             results = {'totals': {}, 'periods': {}, 'terminal': {}}
             total_carbon = 0.0
 
-        for i in range(len(self.run_periods)):
-            period = self.run_periods[i]
-            params = params_set[i]
-            site_to_node_map = self.transmission.get_site_to_node_map()
+        try:
+            for i in range(len(self.run_periods)):
+                period = self.run_periods[i]
+                params = params_set[i]
+                site_to_node_map = self.transmission.get_site_to_node_map()
 
-            # Build the 'bids'
-            bids = []
-            demand_nodes = self.demand.get_node_names()
-            bid_nodes = self.demand.get_bid_prices(period)
-            for j in range(0, len(demand_nodes)):
-                # Quantity is irrelevant as a multi-demand is used
-                bids.append({'node': demand_nodes[j],
-                             'price': bid_nodes[j],
-                             'quantity': 0
-                            })
+                # Build the 'bids'
+                bids = []
+                demand_nodes = self.demand.get_node_names()
+                bid_nodes = self.demand.get_bid_prices(period)
+                for j in range(0, len(demand_nodes)):
+                    # Quantity is irrelevant as a multi-demand is used
+                    bids.append({'node': demand_nodes[j],
+                                 'price': bid_nodes[j],
+                                 'quantity': 0
+                                })
 
-            # Set up the 'multi_demand'
-            multi_demand = matrix(self.demand.get_data(period)).T
-        
-            # Set up the 'offers' and 'multi_generation', ready for generator info
-            offers = []
-            multi_generation_build = [None] * gen_count          
-            
-            for j in range(gen_count):
-                gen = self.gen_list[j]
-                gen_ptr = self.gen_params[j]
+                # Set up the 'multi_demand'
+                multi_demand = matrix(self.demand.get_data(period)).T
 
-                # Set up the generator capacities
-                gen.update_state_new_period_params(gen_state_handles[j], period, 
-                    params[gen_ptr[0]:gen_ptr[1]])    
-            
-            # offer_order is the list of indices into self.gen_list that reflect the order
-            # that the offers are presented to the scheduler
-            offer_order = []
-            
-            for j in self.ramp_list:
-                ## TODO ## implement this
-                pass
-            
-            for j in self.instant_list:
-                gen = self.gen_list[j]
-                site_indices, offer_price, quantity = gen.get_offers_instant(gen_state_handles[j])
-                if len(site_indices) > 0:
-                    offer_order.append(j)
-                    gen_active_sites[j] = len(site_indices)
-                    for ind in site_indices:
-                        offers.append({'node': site_to_node_map[ind],
-                                       'price': offer_price,
-                                       'quantity': 0
-                                       })
-                        multi_generation_build[j] = numpy.ones(ts_len) * quantity
-            
-            for j in self.semisch_list:
-                gen = self.gen_list[j]
-                site_indices, offer_price, quantity = gen.get_offers_semischeduled(
-                    gen_state_handles[j], ts_len)
-                if len(site_indices) > 0:
-                    offer_order.append(j)
-                    gen_active_sites[j] = len(site_indices)
-                    for ind in site_indices:
-                        offers.append({'node': site_to_node_map[ind],
-                                       'price': offer_price,
-                                       'quantity': 0
-                                       })
-                        multi_generation_build[j] = quantity
-           
-            multi_generation = matrix(0.0, (int(numpy.sum(gen_active_sites)), ts_len))
+                # Set up the 'offers' and 'multi_generation', ready for generator info
+                offers = []
+                multi_generation_build = [None] * gen_count          
 
-            ptr = 0
-            for j in offer_order:
-                k = gen_active_sites[j]
-                multi_generation[ptr:ptr+k,:] = multi_generation_build[j]
-                ptr += k
+                for j in range(gen_count):
+                    gen = self.gen_list[j]
+                    gen_ptr = self.gen_params[j]
 
-            # Set up the market clearing engine
-            market_solver = self.market_solver
-            grid = self.transmission.get_grid(period)
-            mke = market_solver.build_optimisation(bids, offers, grid)
+                    # Set up the generator capacities
+                    gen.update_state_new_period_params(gen_state_handles[j], period, 
+                        params[gen_ptr[0]:gen_ptr[1]])    
 
-            # Solve multiple steps
-            market_results, market_success, solutions = market_solver.solve_multiple_steps(mke, multi_demand, 
-                multi_generation)
+                # offer_order is the list of indices into self.gen_list that reflect the order
+                # that the offers are presented to the scheduler
+                offer_order = []
 
-            # Calculate costs
-            period_cost = 0
-            
-            if not market_success:
-                ## TODO ## catch this as an exception, as it needs to escape all the way out of the cost
-                # calculation.
-                period_cost = self.config['dispatch_fail_price']
-                results['dispatch_fail'] = None
-                ## TODO ## put some useful data in here
-            else:
+                for j in self.ramp_list:
+                    ## TODO ## implement this
+                    pass
+
+                for j in self.instant_list:
+                    gen = self.gen_list[j]
+                    site_indices, offer_price, quantity = gen.get_offers_instant(gen_state_handles[j])
+                    if len(site_indices) > 0:
+                        offer_order.append(j)
+                        gen_active_sites[j] = len(site_indices)
+                        for ind in site_indices:
+                            offers.append({'node': site_to_node_map[ind],
+                                           'price': offer_price,
+                                           'quantity': 0
+                                           })
+                            multi_generation_build[j] = numpy.ones(ts_len) * quantity
+
+                for j in self.semisch_list:
+                    gen = self.gen_list[j]
+                    site_indices, offer_price, quantity = gen.get_offers_semischeduled(
+                        gen_state_handles[j], ts_len)
+                    if len(site_indices) > 0:
+                        offer_order.append(j)
+                        gen_active_sites[j] = len(site_indices)
+                        for ind in site_indices:
+                            offers.append({'node': site_to_node_map[ind],
+                                           'price': offer_price,
+                                           'quantity': 0
+                                           })
+                            multi_generation_build[j] = quantity
+
+                multi_generation = matrix(0.0, (int(numpy.sum(gen_active_sites)), ts_len))
+
+                ptr = 0
+                for j in offer_order:
+                    k = gen_active_sites[j]
+                    multi_generation[ptr:ptr+k,:] = multi_generation_build[j]
+                    ptr += k
+
+                # Set up the market clearing engine
+                market_solver = self.market_solver
+                grid = self.transmission.get_grid(period)
+                mke = market_solver.build_optimisation(bids, offers, grid)
+
+                # Solve multiple steps - the SolverException will be thrown from here
+                market_results, solutions = market_solver.solve_multiple_steps(mke, multi_demand, 
+                    multi_generation)
+
+                # Calculate costs
+                period_cost = 0.0
+
                 # Calculate missed-supply costs, where penalty is the bid at that node, as this is
                 # what the optimisation optimised on.
 
@@ -530,23 +541,31 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
 
                 missed_supply = multi_demand - market_results['scheduled_bids']
                 missed_supply_cost = numpy.sum(matrix(bid_nodes).T * missed_supply)
-        
+
                 offer_ptr = 0
                 sch_off = market_results['scheduled_offers']
-                
+
                 for j in offer_order:
                     gen = self.gen_list[j]
+                    gen_type = self.generators[j]
 
                     # Calculate the costs, using the scheduled offers
                     gen_results = gen.calculate_costs_from_schedule_and_finalise(
-                        gen_state_handles[j], sch_off[offer_ptr:(offer_ptr+gen_active_sites[j])]) 
+                        gen_state_handles[j], sch_off[offer_ptr:(offer_ptr+gen_active_sites[j]),:],
+                        full_results) 
+
+                    if (full_results):
+                        this_cost, period_results['generators'][gen_type] = self.complete_results_calc(
+                            period, gen_results, full_results)
+                        period_carbon += period_results['generators'][gen_type]['total_carbon_emissions']
+                    else:
+                        this_cost = self.complete_results_calc(period, gen_results, full_results)
 
                     offer_ptr += gen_active_sites[j]
-
-                    ### TODO - extract and calculate the costs from the gen_results (similar to what's
-                    ### done in txmultimastersimple.py
+                    period_cost += this_cost
 
                 ### TODO - calculate transmission costs
+                ### TODO - report the missed supply
 
                 if full_results:
                     period_results['totals']['cost'] = period_cost
@@ -555,34 +574,137 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
 
                 cost += period_cost
 
-        # calculate the terminal value at the end of the last period
-        total_terminal_value = 0.0
+            # calculate the terminal value at the end of the last period
+            total_terminal_value = 0.0
 
-        final_period = self.run_periods[-1]
-        for i in range(gen_count):
-            gen_type = self.generators[i]
-            gen = self.gen_list[gen_type]
-            terminal_value, site_terminal_value = gen.get_terminal_value(final_period, 
-                gen_state_handles[i])
+            final_period = self.run_periods[-1]
+            for i in range(gen_count):
+                gen_type = self.generators[i]
+                gen = self.gen_list[i]
+                terminal_value, site_terminal_value = gen.get_terminal_value(final_period, 
+                    gen_state_handles[i])
+
+                if full_results:
+                    results['terminal']['generators'][gen_type] = {'total_value': terminal_value, 
+                        'site_value': site_terminal_value}
+
+                total_terminal_value += terminal_value
+
+            cost -= total_terminal_value
 
             if full_results:
-                results['terminal']['generators'][gen_type] = {'total_value': terminal_value, 
-                    'site_value': site_terminal_value}
+                results['totals']['cost'] = cost
+                results['totals']['carbon'] = total_carbon
+                results['totals']['terminal_value'] = total_terminal_value
 
-            total_terminal_value += terminal_value
+        except mureilexception.SolverException as me:
+            if 'sol' in me.data:
+                logger.debug('Solver fail: ' + me.data['sol']['status'])
+            if 'prop' in me.data:
+                logger.debug('Reject proportion: ' + str(me.data['prop']))
+            cost = self.config['dispatch_fail_price']
+
+            # and sum up all the gene values as an approximation to new capacity,
+            # to direct towards a smaller system that might fit the grid
+            # (assuming that massive oversupply is the problem with the solving)
+            cost += numpy.sum(gene)
             
-        cost -= total_terminal_value
-
-        if full_results:
-            results['totals']['cost'] = cost
-            results['totals']['carbon'] = total_carbon
-            results['totals']['terminal_value'] = total_terminal_value
+            if full_results:
+                results['dispatch_fail'] = me.data
 
         if full_results:
             return cost, results
         else:
             return cost
 
+
+    def complete_results_calc(self, period, gen_results, full_results=False):
+        """Take the results from calculate_costs_from_schedule_and_finalise, and complete
+        the calculation of the total cost for that generator, total supply, and 
+        variable costs and carbon emissions across the period. The total cost includes
+        the cost of the carbon emissions.
+        
+        This function could be overridden to use a more complex cost calculation method.
+        
+        Inputs:
+            gen_results: dict, the output of a call to a generator's 
+                calculate_costs_from_schedule_and_finalise function.
+        
+        Outputs:
+            cost
+            if full_results == True:
+            results: dict, with fields:
+                site_indices
+                capacity
+                new_capacity
+                supply
+                aggregate_supply
+                variable_cost_period  (per site)
+                carbon_emissions_period   (per site)
+                other
+                site_total_cost
+                cost (total cost across all sites)
+                total_carbon_emissions
+                total_supply_period
+                decommissioned
+                desc_string
+        """
+        total_cost = 0.0
+        
+        curr_config = self.period_configs[period]
+        variable_cost_mult = curr_config['variable_cost_mult']
+        carbon_price_m = curr_config['carbon_price_m']
+        time_scale_up_mult = curr_config['time_scale_up_mult']
+        
+        if full_results:
+            results = {}
+            results['site_indices'] = gen_results['site_indices']
+            results['capacity'] = gen_results['capacity']
+            results['new_capacity'] = gen_results['new_capacity']
+            results['supply'] = numpy.array(gen_results['supply'])
+            results['other'] = gen_results['other']
+            results['decommissioned'] = gen_results['decommissioned']
+            agg_supply = numpy.sum(results['supply'], axis=0)
+            results['aggregate_supply'] = agg_supply
+            results['total_supply_period'] = numpy.sum(agg_supply)
+            results['desc_string'] = gen_results['desc_string']
+
+        site_indices = gen_results['site_indices']
+        site_total_cost = numpy.zeros(len(site_indices))
+
+        # Add up the new capacity costs and decommissioning costs
+        if full_results:
+            for (site_index, dummy, site_cost) in gen_results['new_capacity']:
+                site_total_cost[site_indices.index(site_index)] += site_cost
+            for (site_index, dummy, site_cost) in gen_results['decommissioned']:
+                site_total_cost[site_indices.index(site_index)] += site_cost
+        else:
+            total_cost += gen_results['new_capacity_total_cost']                
+            total_cost += gen_results['decomm_total_cost']
+
+        # Scale up the carbon emissions and the variable costs
+        carbon_emissions_period_sites = (gen_results['carbon_emissions_ts'] * 
+            time_scale_up_mult)
+        variable_cost_period_sites = (gen_results['variable_cost_ts'] * 
+            variable_cost_mult)
+        
+        # Sum up the total cost per site, including carbon pricing
+        site_total_cost += variable_cost_period_sites
+        site_total_cost += carbon_emissions_period_sites * carbon_price_m
+
+        total_cost += numpy.sum(site_total_cost)
+        
+        if full_results:
+            results['variable_cost_period'] = variable_cost_period_sites
+            results['carbon_emissions_period'] = carbon_emissions_period_sites
+            results['total_carbon_emissions'] = numpy.sum(carbon_emissions_period_sites)
+            
+        if full_results:
+            results['cost'] = total_cost
+            return total_cost, results
+        else:
+            return total_cost
+        
 
     def evaluate_results(self, params):
         """Collect a dict that includes all the calculated results from a

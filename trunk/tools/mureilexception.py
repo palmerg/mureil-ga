@@ -71,7 +71,21 @@ class ConfigException(MureilException):
     def __init__(self, msg, data):
         self.msg = msg
         self.data = data
-        
+ 
+ 
+class SolverException(MureilException):
+    """Exception raised for issues solving a transmission or other 
+    optimisation, e.g. an LP that is dual feasible.
+
+    Attributes:
+        msg -- explanation of the error
+        data -- a dict of any useful information to understand the error
+    """
+    
+    def __init__(self, msg, data):
+        self.msg = msg
+        self.data = data
+
 
 class ClassTypeException(MureilException):
     """Exception raised when selected class does not implement required
