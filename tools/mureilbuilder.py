@@ -687,6 +687,27 @@ def make_int_list(val):
         return val
 
 
+def make_float_list(val):
+    """Check if the item is a string, and if so, apply str.split() to make a list of
+    floats. If it's a list of floats, return as is. 
+    
+    Used as a conversion function for apply_conversions above.
+
+    Inputs:
+        val: value, either string or list of floats
+        
+    Outputs:
+        list of floats
+
+    This allows configuration parameters such as dispatch_order to be initialised from 
+    a string or from a config pickle.
+    """
+    if isinstance(val, str):
+        return map(float, str.split(val))
+    else:
+        return val
+
+
 def string_to_bool(val):
     """Convert 'False' to False and 'True' to True and everything else to 'False'
     
