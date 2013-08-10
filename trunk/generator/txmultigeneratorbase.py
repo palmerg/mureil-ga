@@ -63,7 +63,7 @@ class TxMultiGeneratorBase(configurablebase.ConfigurableMultiBase):
                     'demand_management', 'missed_supply', default 'generator'
         """
         flags = {}
-        flags['dispatch'] = 'instant_dispatch'
+        flags['dispatch'] = 'instant'
         flags['technology'] = 'generic'
         flags['model_type'] = 'generator'
         

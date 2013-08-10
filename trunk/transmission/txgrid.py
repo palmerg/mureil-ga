@@ -36,10 +36,12 @@ from tools import configurablebase
 from transmission import grid_data_loader
 from tools import mureilbuilder
 
+from master import interfacesflowmaster
+
 import numpy
 import copy
 
-class TxGrid(configurablebase.ConfigurableMultiBase):
+class TxGrid(configurablebase.ConfigurableMultiBase, interfacesflowmaster.InterfaceTransmission):
     """Hold data on the transmission grid for the dispatcher. Calculate the cost of
     connecting generation sites to transmission nodes.
     """
@@ -83,7 +85,8 @@ class TxGrid(configurablebase.ConfigurableMultiBase):
         return copy.deepcopy(self.startup_state)
 
 
-    def calculate_cost(self, state_handle, period, site_indices, site_capacity):
+    def calculate_connection_cost(self, state_handle, site_indices, site_capacity, 
+        site_new_capacity):
         """Calculate the cost of adding new transmission connections to the network,
         from the list of active sites provided.
         
@@ -93,14 +96,26 @@ class TxGrid(configurablebase.ConfigurableMultiBase):
                 which may include duplicates.
             site_capacity: A list of installed capacity in MW at each site, corresponding to
                 site_indices.
+            site_new_capacity: A list of new installed capacity, a list of tuples
+                of (site_index, new_capacity, cost)  (cost is ignored)
 
         Outputs:
             cost: The cost in $M for building the new transmission.
         """
+    
+        # This is a very simple calculation that charges for the connection
+        # as the site_connection_cost * new_capacity at the site. 
+        cost = 0.0
+        
+        # site_connection_cost is $M/MW
+        # new_capacity is in MW
+        # output is in $M
+        
+        for (site_index, new_capacity, dummy) in site_new_capacity: 
+            cost += (self.site_connection_cost[site_index] *
+                new_capacity)
 
-        ### TODO ### implement this calculation, using the site_connection_cost map. 
-
-        return 0
+        return cost
         
 
     def get_data_types(self):

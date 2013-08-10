@@ -99,8 +99,9 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
         self.gen_list = {}
         self.gen_params = {}
         
-        start_values_min = numpy.array([[]]).reshape((len(self.config['run_periods']), 0))
-        start_values_max = numpy.array([[]]).reshape((len(self.config['run_periods']), 0))
+        run_period_len = len(self.config['run_periods'])
+        start_values_min = numpy.array([[]]).reshape(run_period_len, 0)
+        start_values_max = numpy.array([[]]).reshape(run_period_len, 0)
 
         for i in range(len(self.dispatch_order)):
             gen_type = self.dispatch_order[i]
@@ -123,24 +124,9 @@ class TxMultiMasterSimple(mureilbase.MasterInterface, configurablebase.Configura
                 self.gen_params[gen_type] = (param_count, 
                     param_count + params_req)
 
-                run_period_len = len(self.config['run_periods'])
-                (starts_min, starts_max) = gen.get_param_starts()
-                starts_min = numpy.array(starts_min)
-                starts_max = numpy.array(starts_max)
-
-                if starts_min.size == 0:
-                    start_values_min = numpy.hstack((start_values_min, (
-                        (numpy.ones((run_period_len, params_req)) * 
-                        self.global_config['min_param_val']).tolist())))
-                else:
-                    start_values_min = numpy.hstack((start_values_min, starts_min))
-
-                if starts_max.size == 0:
-                    start_values_max = numpy.hstack((start_values_max, (
-                        (numpy.ones((run_period_len, params_req)) * 
-                        self.global_config['max_param_val']).tolist())))
-                else:
-                    start_values_max = numpy.hstack((start_values_max, starts_max))
+                start_values_min, start_values_max = mureilbuilder.add_param_starts(
+                    gen.get_param_starts(), params_req, self.global_config,
+                    run_period_len, start_values_min, start_values_max)
 
             param_count += params_req
 

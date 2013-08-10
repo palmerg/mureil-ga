@@ -64,23 +64,12 @@ class Engine(configurablebase.ConfigurableBase):
         random.seed(self.config['seed'])
         self.population = Pop(self.config)
 
-        ### TODO ### remove the need to score the pop before it starts? This makes
-        ### it hard to test the master as the master has to create it, but the
-        ### test would want to just call calc_cost itself.
-        self.pop_score()
         self.clones_data = []
         self.best_gene_data = []
         self.iteration_count = -1
         
         self.is_configured = True
         
-        num = 0
-        sum = 0
-        for gene in self.population.genes:
-            num += 1
-            sum += gene.score
-        logger.debug('average score before: %f', float(sum)/num)
-
         return None
 
 
@@ -143,6 +132,9 @@ class Engine(configurablebase.ConfigurableBase):
         necessary. Done here in a separate call to ensure
         the master is constructed so the finalise call will
         work, so multiprocessing does not get left running.
+        
+        Also calculates the population score to prepare for the 
+        first iteration.
         """
         # Multiprocessing as implemented here does not work on Windows
         if (sys.platform == 'win32'):
@@ -158,6 +150,14 @@ class Engine(configurablebase.ConfigurableBase):
                 p.start()
             self.mp_active = True
             logger.debug('Multiprocessing started')
+
+        self.pop_score()
+        num = 0
+        sum = 0
+        for gene in self.population.genes:
+            num += 1
+            sum += gene.score
+        logger.debug('average score before: %f', float(sum)/num)
 
 
     def finalise(self):

@@ -3,7 +3,7 @@
 [Master]
 model: master.txmultimasterflow.TxMultiMasterFlow
 global: Global
-iterations: 50
+iterations: 25
 output_file: flow1.pkl
 algorithm: Algorithm
 wind: Wind
@@ -29,7 +29,7 @@ carbon_price: {2010: 25, 2020: 50, 2030: 75, 2040: 100, 2050:150}
 model: algorithm.geneticalgorithm.Engine
 base_mute: 0.01
 gene_mute: 0.1
-pop_size: 25
+pop_size: 15
 mort: 0.5
 nuke_power: 20
 processes: 0
@@ -66,12 +66,14 @@ model: demand.demandmatrix.DemandMatrix
 data_name: ts_demand
 node_list_name: ts_demand_hdr
 bid_price: 10000
-scale: 1
+scale: {2010: 1.0, 2020: 1.5}
 
 [MarketSolver]
 model: transmission.market_clearing_engine.MarketClearingEngine
 
 [Transmission]
+# NOTE: ROAM Consulting is acknowledged as the source of the transmission
+# network data used here. (22-node model).
 model: transmission.txgrid.TxGrid
 site_filename: tx_connect_map.csv
 grid_filenames: nodes.csv lines.csv shift_factors.csv A-matrix.csv

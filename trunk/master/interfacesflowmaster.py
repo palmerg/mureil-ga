@@ -106,6 +106,48 @@ class InterfaceRampDispatch(InterfaceDispatcher):
             offer_price: the offer price, one per site (interpreted as same for all timesteps)
             min_quantity: the minimum offer quantity, one value per site, in MW.
             max_quantity: the maximum offer quantity, one value per site, in MW.
-            ramp_rate: the ramp rate, one value per site, in MW/timestep.
+            ramp_rate_up: the ramp rate when increasing output, one value per site, in MW/timestep.
+            ramp_rate_down: the ramp rate when decreasing output, one value per site, in MW/timestep
         """
         pass
+
+
+class InterfaceTransmission(object):
+    __metaclass__ = abc.ABCMeta
+    
+    @abc.abstractmethod
+    def calculate_connection_cost(self, state_handle, site_indices, site_capacity, 
+        site_new_capacity):
+        """Calculate the cost of adding new transmission connections to the network,
+        from the list of active sites provided.
+        
+        Inputs:
+            state_handle: The state_handle, as returned by get_startup_state.
+            site_indices: A list of sites requiring transmission connections, 
+                which may include duplicates.
+            site_capacity: A list of installed capacity in MW at each site, corresponding to
+                site_indices.
+            site_new_capacity: A list of new installed capacity, a list of tuples
+                of (site_index, new_capacity, cost)  (cost is ignored)
+
+        Outputs:
+            cost: The cost in $M for building the new transmission.
+        """
+        pass
+        
+
+    @abc.abstractmethod
+    def get_site_to_node_map(self):
+        """Return a dict mapping site index to node name.
+        ## TODO ## complete the doc
+        """
+        pass
+
+
+    @abc.abstractmethod
+    def get_grid(self, period):
+        """Return the grid object, for the given period.
+        ## TODO ## complete the doc
+        """
+        pass
+
