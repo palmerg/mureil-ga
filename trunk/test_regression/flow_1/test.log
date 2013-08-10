@@ -1,4 +1,4 @@
-CRITICAL : Run started at Sat Aug 10 14:13:48 2013
+CRITICAL : Run started at Sat Aug 10 20:58:33 2013
 DEBUG    : Solver fail: dual infeasible
 DEBUG    : Solver fail: dual infeasible
 DEBUG    : Solver fail: dual infeasible
@@ -248,7 +248,7 @@ DEBUG    : Solver fail: dual infeasible
 DEBUG    : Solver fail: dual infeasible
 DEBUG    : b_score = -292499.439655
 DEBUG    : iteration: 24
-CRITICAL : Run time: 5.70 seconds
+CRITICAL : Run time: 5.77 seconds
 DEBUG    : Solver fail: dual infeasible
 DEBUG    : Solver fail: dual infeasible
 DEBUG    : Solver fail: dual infeasible
