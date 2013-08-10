@@ -91,12 +91,15 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
         self.global_calc.post_data_global_calcs()
         self.global_config = self.global_calc.get_config()
 
-        ## TODO ## MG - have a proper think about why the globals weren't applied
-        # to the master previously. What I've done here will override any values
-        # in the 'master' with those in the 'global', which shouldn't be an issue, but
-        # could be documented ...
-        
-        self.config.update(self.global_config)
+        ## The master here takes 'global' variables, if needed and available, to get at the carbon_price_m,
+        ## variable_cost_mult and time_scale_up_mult values, which it then expands to all time periods,
+        ## for use later.
+        for param_name in ['carbon_price_m', 'variable_cost_mult', 'time_scale_up_mult']:
+            if (param_name not in self.config) and (param_name in self.global_config):
+                self.config[param_name] = self.global_config[param_name]
+        self.config_spec += [('carbon_price_m', float, None), ('variable_cost_mult', float, None),
+            ('time_scale_up_mult', float, None)]
+        self.check_config()
         self.expand_config(self.config['run_periods'])
 
         # Now instantiate the demand model
@@ -111,6 +114,9 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
         self.transmission = mureilbuilder.create_instance(full_config, self.global_config,
             self.config['transmission'], configurablebase.ConfigurableMultiBase,
             self.config['run_periods'])
+        
+        mureilbuilder.check_subclass(self.transmission, 
+            interfacesflowmaster.InterfaceTransmission)
 
         # Instantiate the generator objects, set their data, determine their param requirements,
         # and separate by dispatch type.
@@ -124,8 +130,9 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
         self.instant_list = []
         self.ramp_list = []
         
-        start_values_min = numpy.array([[]]).reshape((len(self.config['run_periods']), 0))
-        start_values_max = numpy.array([[]]).reshape((len(self.config['run_periods']), 0))
+        run_period_len = len(self.config['run_periods'])
+        start_values_min = numpy.array([[]]).reshape(run_period_len, 0)
+        start_values_max = numpy.array([[]]).reshape(run_period_len, 0)
 
         for i in range(len(self.generators)):
             gen_type = self.generators[i]
@@ -168,27 +175,10 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                 self.gen_params[i] = (param_count, 
                     param_count + params_req)
 
-                run_period_len = len(self.config['run_periods'])
-
-                ### TODO ### get this messy and general code out into a function
-                (starts_min, starts_max) = gen.get_param_starts()
-                starts_min = numpy.array(starts_min)
-                starts_max = numpy.array(starts_max)
-
-                if starts_min.size == 0:
-                    start_values_min = numpy.hstack((start_values_min, (
-                        (numpy.ones((run_period_len, params_req)) * 
-                        self.global_config['min_param_val']).tolist())))
-                else:
-                    start_values_min = numpy.hstack((start_values_min, starts_min))
-
-                if starts_max.size == 0:
-                    start_values_max = numpy.hstack((start_values_max, (
-                        (numpy.ones((run_period_len, params_req)) * 
-                        self.global_config['max_param_val']).tolist())))
-                else:
-                    start_values_max = numpy.hstack((start_values_max, starts_max))
-
+                start_values_min, start_values_max = mureilbuilder.add_param_starts(
+                    gen.get_param_starts(), params_req, self.global_config,
+                    run_period_len, start_values_min, start_values_max)
+                    
             param_count += params_req
 
         start_values_min = start_values_min.reshape(run_period_len * param_count)
@@ -355,26 +345,19 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                         period_results['totals']['cost'], 
                         period_results['totals']['carbon'] * 1e-6))
 
-                    ## TODO - output demand data
-
-                    #if 'demand' in self.dispatch_order:
-                    #    ts_demand[period] = period_results['generators']['demand']['other']['ts_demand']
-                    #else:
-                    #    ts_demand[period] = self.data.get_timeseries('ts_demand')
-
-                    ## TODO - save dispatch data too
-
-                    #period_results['totals']['demand'] = (numpy.sum(ts_demand[period]) *
-                    #    self.global_config['time_scale_up_mult'] * self.global_config['timestep_hrs'])
-                    #logger.info('Period total demand (GWh): {:.2f}'.format(
-                    #    period_results['totals']['demand'] / 1000))
-
                     for gen_type, value in period_results['generators'].iteritems():
                         gen_string = value['desc_string']
                         gen_cost = value['cost']
                         gen_supply = value['total_supply_period']
                         logger.info(gen_type + ' ($M {:.2f}, GWh {:.2f}) : '.format(
                             gen_cost, gen_supply / 1000) + gen_string)
+
+                    logger.info('Total connection cost: $M {:.2f}'.format(
+                        period_results['transmission']['connection_cost_total']))
+                    logger.info('Total system demand: GWh {:.2f}'.format(
+                        period_results['totals']['demand'] / 1000))
+                    logger.info('Total unserved energy: GWh {:.2f}'.format(
+                        period_results['demand']['unserved_energy_total'] / 1000))
 
                 logger.info('======================================================')
 
@@ -387,7 +370,6 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
             pickle_dict['config'] = full_conf
 
             pickle_dict['best_results'] = results
-            #pickle_dict['ts_demand'] = ts_demand
 
             if self.config['do_plots']:
                 if 'dispatch_fail' not in results:
@@ -395,11 +377,13 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                         plot_data = {}
                         for gen_type, value in results['periods'][period]['generators'].iteritems():
                             plot_data[gen_type] = value['aggregate_supply']
+            
+                        ts_demand = results['periods'][period]['demand']['aggregate_ts']
 
                         this_final = final and (period == self.config['run_periods'][-1])
-                #        mureiloutput.plot_timeseries(plot_data, 
-                #            ts_demand[period], this_final, plot_title=(
-                #                str(period) + ' at iteration ' + str(iteration)))
+                        mureiloutput.plot_timeseries(plot_data, 
+                            ts_demand, this_final, plot_title=(
+                                str(period) + ' at iteration ' + str(iteration)))
 
             output_file = self.config['output_file']
             mureiloutput.pickle_out(pickle_dict, output_file)
@@ -437,8 +421,6 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
             gen_state_handles[i] = (
                 self.gen_list[i].get_startup_state_handle())        
 
-        tx_state_handle = self.transmission.get_startup_state_handle()
-
         cost = 0
         if full_results:
             results = {'totals': {}, 'periods': {}, 'terminal': {}}
@@ -453,11 +435,11 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                 # Build the 'bids'
                 bids = []
                 demand_nodes = self.demand.get_node_names()
-                bid_nodes = self.demand.get_bid_prices(period)
+                bid_prices = self.demand.get_bid_prices(period)
                 for j in range(0, len(demand_nodes)):
                     # Quantity is irrelevant as a multi-demand is used
                     bids.append({'node': demand_nodes[j],
-                                 'price': bid_nodes[j],
+                                 'price': bid_prices[j],
                                  'quantity': 0
                                 })
 
@@ -481,8 +463,20 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                 offer_order = []
 
                 for j in self.ramp_list:
-                    ## TODO ## implement this
-                    pass
+                    gen = self.gen_list[j]
+                    site_indices, offer_price, min_quantity, max_quantity, ramp_rate_up, ramp_rate_down = (
+                        gen.get_offers_ramp(gen_state_handles[j]))
+                    if len(site_indices) > 0:
+                        offer_order.append(j)
+                        gen_active_sites[j] = len(site_indices)
+                        for ind in site_indices:
+                            offers.append({'node': site_to_node_map[ind],
+                                           'price': offer_price,
+                                           'quantity': 0,
+                                           'ramp_up': ramp_rate_up,
+                                           'ramp_down': ramp_rate_down
+                                           })
+                            multi_generation_build[j] = numpy.ones(ts_len) * max_quantity
 
                 for j in self.instant_list:
                     gen = self.gen_list[j]
@@ -530,20 +524,49 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
 
                 # Calculate costs
                 period_cost = 0.0
-
-                # Calculate missed-supply costs, where penalty is the bid at that node, as this is
-                # what the optimisation optimised on.
+                period_connection_cost = 0.0
 
                 if full_results:
                     period_carbon = 0.0
-                    results['periods'][period] = period_results = {'generators': {}, 'totals': {}}
-                    results['terminal'] = {'totals': {}, 'generators': {}}
+                    results['periods'][period] = period_results = {'demand': {}, 'generators': {}, 'transmission': {}, 'totals': {}}
+                    results['terminal'] = {'totals': {}, 'transmission': {}, 'generators': {}}
+                    results['periods'][period]['transmission']['dispatch'] = dispatch_results = {}
+                    results['periods'][period]['transmission']['connection_cost'] = {}
+                    dispatch_results['bids'] = bids
+                    dispatch_results['offers'] = offers
+                    dispatch_results['bid_quantity'] = numpy.array(multi_demand)
+                    dispatch_results['offer_quantity'] = numpy.array(multi_generation)
+                    dispatch_results['scheduled_bids'] = numpy.array(market_results['scheduled_bids'])
+                    dispatch_results['scheduled_offers'] = numpy.array(market_results['scheduled_offers'])
+                    inj, ac_f, dc_f = market_solver.calculate_flows_from_solutions(mke, solutions)
+                    dispatch_results['injections'] = numpy.array(inj)
+                    dispatch_results['ac_flows'] = numpy.array(ac_f)
+                    dispatch_results['dc_flows'] = numpy.array(dc_f)
 
-                missed_supply = multi_demand - market_results['scheduled_bids']
-                missed_supply_cost = numpy.sum(matrix(bid_nodes).T * missed_supply)
+                # Calculate unserved energy costs, where penalty is the bid at that node, as this is
+                # what the optimisation optimised on.
+                unserved_power = multi_demand - market_results['scheduled_bids']
+                unserved_energy = (unserved_power * self.global_config['timestep_hrs'] *
+                    self.global_config['time_scale_up_mult'])
+                unserved_energy_cost = numpy.sum(matrix(bid_prices).T * unserved_energy)
+                period_cost += unserved_energy_cost
+
+                if full_results:
+                    for i in range(len(bids)):
+                        period_results['demand'][bids[i]['node']] = node_demand = {}
+                        node_demand['bid_quantity_ts'] = numpy.array(multi_demand[i,:])
+                        node_demand['total'] = numpy.sum(node_demand['bid_quantity_ts']) * self.global_config['time_scale_up_mult']
+                        node_demand['unserved_energy'] = numpy.array((multi_demand[i,:] - market_results['scheduled_bids'][i,:]) *
+                            self.global_config['time_scale_up_mult'])
+                    period_results['demand']['unserved_energy_ts'] = numpy.sum(unserved_power, axis=1)
+                    period_results['demand']['unserved_energy_total'] = numpy.sum(unserved_energy)
+                    period_results['demand']['aggregate_ts'] = numpy.sum(multi_demand, axis=0)
+                    period_results['totals']['demand'] = (numpy.sum(period_results['demand']['aggregate_ts']) *
+                        self.global_config['time_scale_up_mult'])
 
                 offer_ptr = 0
                 sch_off = market_results['scheduled_offers']
+                total_connection_cost = 0.0
 
                 for j in offer_order:
                     gen = self.gen_list[j]
@@ -554,9 +577,15 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                         gen_state_handles[j], sch_off[offer_ptr:(offer_ptr+gen_active_sites[j]),:],
                         full_results) 
 
+                    gen_connection_cost = self.transmission.calculate_connection_cost(
+                        None, gen_results['site_indices'], gen_results['capacity'],
+                        gen_results['new_capacity'])
+                    total_connection_cost += gen_connection_cost
+
                     if (full_results):
                         this_cost, period_results['generators'][gen_type] = self.complete_results_calc(
                             period, gen_results, full_results)
+                        period_results['transmission']['connection_cost'][gen_type] = gen_connection_cost
                         period_carbon += period_results['generators'][gen_type]['total_carbon_emissions']
                     else:
                         this_cost = self.complete_results_calc(period, gen_results, full_results)
@@ -564,10 +593,10 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
                     offer_ptr += gen_active_sites[j]
                     period_cost += this_cost
 
-                ### TODO - calculate transmission costs
-                ### TODO - report the missed supply
+                period_cost += total_connection_cost
 
                 if full_results:
+                    period_results['transmission']['connection_cost_total'] = total_connection_cost
                     period_results['totals']['cost'] = period_cost
                     period_results['totals']['carbon'] = period_carbon
                     total_carbon += period_carbon
@@ -666,7 +695,8 @@ class TxMultiMasterFlow(mureilbase.MasterInterface, configurablebase.Configurabl
             results['decommissioned'] = gen_results['decommissioned']
             agg_supply = numpy.sum(results['supply'], axis=0)
             results['aggregate_supply'] = agg_supply
-            results['total_supply_period'] = numpy.sum(agg_supply)
+            results['total_supply_period'] = (numpy.sum(agg_supply) *
+                time_scale_up_mult)
             results['desc_string'] = gen_results['desc_string']
 
         site_indices = gen_results['site_indices']

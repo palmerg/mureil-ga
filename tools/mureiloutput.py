@@ -121,6 +121,7 @@ def plot_timeseries(output, demand, hold=True, plot_title=''):
 
     pylab.legend()        
     pylab.title(plot_title + ': Cumulative power')
+    pylab.ylim(ymin=0)
 
     pylab.figure()
     pylab.plot(ts, demand, label='demand', linewidth=2)
@@ -133,6 +134,7 @@ def plot_timeseries(output, demand, hold=True, plot_title=''):
 
     pylab.legend()        
     pylab.title(plot_title + ': Non-cumulative power')
+    pylab.ylim(ymin=0)
 
     pylab.show(hold)
 

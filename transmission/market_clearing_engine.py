@@ -83,7 +83,7 @@ class MarketClearingEngine(configurablebase.ConfigurableMultiBase):
             ]
 
 
-    def build_optimisation(self, bids, offers, grid):
+    def build_optimisation(self, bids, offers, grid, simultaneous_steps=1):
         """Sets up the optimisation matrices, to relate bids (for demand),
         offers (of supply), and the grid (description of transmission network).
         
@@ -96,6 +96,8 @@ class MarketClearingEngine(configurablebase.ConfigurableMultiBase):
                 quantity is arbitrary is a multi-step solve will be done. 
             grid: description of the transmission grid, as created by grid_data_loader.py.
                 ## TODO ### fill in what this means
+            simultaneous_steps: integer, default 1 - specify how many timesteps to simultaneously
+                solve. (Not implemented). 
                 
         Outputs:
             market: an object of type MarketOptimisation that holds the configured objective and constraints.
@@ -253,6 +255,19 @@ class MarketClearingEngine(configurablebase.ConfigurableMultiBase):
 
     def scheduled_offers(self, market, schedule):
         return schedule[len(market.bids_template):len(market.bids_template) + len(market.offers_template),:]
+
+
+    def calculate_flows_from_solutions(self, market, solutions):
+        """Calculate a full set of flow results from the market and the solution. Use this to get full
+        results for logging.
+        """
+        schedules = cvx.matrix([s['x'].T for s in solutions]).T
+        injections = market.injections_from_schedule * schedules
+        ac_flows = market.grid.shift_factors * injections
+        dc_flows = self.dc_flows(schedules, market.grid.dc_lines)
+
+        return injections, ac_flows, dc_flows
+
 
     def _injections_from_schedule(self, bids, offers, nodes, dc_lines):
         len_bids = len(bids)

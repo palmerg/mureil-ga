@@ -40,6 +40,7 @@ import string
 import copy
 import types
 import ast
+import numpy
 
 logger = logging.getLogger(__name__)
 
@@ -743,4 +744,41 @@ def supply_single_pass_data(gen, data, gen_type):
             raise mureilexception.ConfigException(msg, {})
 
     gen.set_data(this_data_dict)
+
+
+def add_param_starts(this_starts, params_req, global_conf, run_period_len, start_values_min, start_values_max):
+    """Process the param starts information taken from the generator, and add it to
+    the array being constructed.
+    
+    Inputs:
+        this_starts: a tuple with (starts_min, starts_max), the output from a generator's
+            get_param_starts() function.
+        params_req: integer, the number of parameters this generator requires
+        global_conf: a dict including 'min_param_val' and 'max_param_val'
+        run_period_len: the number of periods to run for
+        start_values_min: the array to append the min start values to
+        start_values_max: the array to append the max start values to
+
+    Outputs:
+        start_values_min, start_values_max, updated versions (not necessarily in-place)
+    """
+    (starts_min, starts_max) = this_starts
+    starts_min = numpy.array(starts_min)
+    starts_max = numpy.array(starts_max)
+
+    if starts_min.size == 0:
+        start_values_min = numpy.hstack((start_values_min, (
+            (numpy.ones((run_period_len, params_req)) * 
+            global_conf['min_param_val']).tolist())))
+    else:
+        start_values_min = numpy.hstack((start_values_min, starts_min))
+
+    if starts_max.size == 0:
+        start_values_max = numpy.hstack((start_values_max, (
+            (numpy.ones((run_period_len, params_req)) * 
+            global_conf['max_param_val']).tolist())))
+    else:
+        start_values_max = numpy.hstack((start_values_max, starts_max))
+
+    return start_values_min, start_values_max
 
